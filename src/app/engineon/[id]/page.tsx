@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import EngineonDetailClient from "@/components/engineon/EngineonDetailClient";
 
-export const dynamic = "force-dynamic"; // ensure runtime render
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 interface RawEngineonData {
@@ -26,66 +26,45 @@ export default async function EngineonDetailPage({
 }: {
   params: { id: string };
 }) {
-  console.log("🟡 [EngineonDetailPage] params:", params);
+  console.log("🟢 [EngineonDetailPage] params:", params);
 
-  const id = params.id; // ✅ FIX — remove Promise wrapper
-  console.log("🟢 ID received:", id);
-
+  const id = params.id; // ✅ plain object access — no Promise
   if (!id) {
     console.error("❌ Missing ID param");
     return notFound();
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000");
-
-  const apiUrl =
-    process.env.NODE_ENV === "production"
-      ? `/api/raw-engineon?id=${encodeURIComponent(id)}`
-      : `${baseUrl}/api/raw-engineon?id=${encodeURIComponent(id)}`;
-
+  const apiUrl = `/api/raw-engineon?id=${encodeURIComponent(id)}`;
   console.log("🌐 Fetching:", apiUrl);
 
-  let payload: any;
   try {
     const res = await fetch(apiUrl, { cache: "no-store" });
     console.log("🔵 Fetch status:", res.status);
+    if (!res.ok) return notFound();
 
-    if (!res.ok) {
-      console.error("❌ API fetch failed:", res.status, await res.text());
+    const payload = await res.json();
+    const events: RawEngineonData[] = Array.isArray(payload)
+      ? payload
+      : payload
+      ? [payload]
+      : [];
+
+    console.log("✅ Events count:", events.length);
+
+    if (!events.length) {
+      console.warn("⚠️ No events found for", id);
       return notFound();
     }
 
-    payload = await res.json();
-    console.log("🧩 Payload type:", Array.isArray(payload) ? "array" : typeof payload);
+    const sorted = [...events].sort((a, b) => {
+      const getSuffix = (s: string) =>
+        parseInt(s.split("_").pop() || "0", 10);
+      return getSuffix(b._id) - getSuffix(a._id);
+    });
+
+    return <EngineonDetailClient events={sorted} />;
   } catch (err) {
-    console.error("❌ Fetch or parse error:", err);
+    console.error("❌ Fetch failed:", err);
     return notFound();
   }
-
-  const events: RawEngineonData[] = Array.isArray(payload)
-    ? payload
-    : payload
-    ? [payload]
-    : [];
-
-  console.log("✅ Events count:", events.length);
-
-  if (!events.length) {
-    console.warn("⚠️ No events found for", id);
-    return notFound();
-  }
-
-  const sorted = [...events].sort((a, b) => {
-    const getSuffix = (val: string) =>
-      parseInt(val.split("_").pop() || "0", 10);
-    return getSuffix(b._id) - getSuffix(a._id);
-  });
-
-  console.log("✅ Sorted events:", sorted.map((e) => e._id));
-
-  return <EngineonDetailClient events={sorted} />;
 }
