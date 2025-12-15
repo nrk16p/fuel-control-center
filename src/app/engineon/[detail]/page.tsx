@@ -3,9 +3,8 @@ import EngineonDetailClient from "@/components/engineon/EngineonDetailClient";
 
 function getBaseUrl() {
   if (typeof window !== "undefined") return window.location.origin;
-  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
+  return "https://fuel-control-center.vercel.app"; // ✅ your production domain
 }
 
 export const dynamic = "force-dynamic";
@@ -41,7 +40,6 @@ export default async function EngineonDetailPage(props: {
 
   const baseUrl = getBaseUrl();
   const apiUrl = `${baseUrl}/api/raw-engineon?id=${encodeURIComponent(id)}`;
-
   console.log("🌐 Fetching:", apiUrl);
 
   try {
@@ -57,19 +55,15 @@ export default async function EngineonDetailPage(props: {
       ? [payload]
       : [];
 
-    if (!events.length) {
-      console.warn("⚠️ No events found for", id);
-      return notFound();
-    }
+    console.log("✅ Events count:", events.length);
+    if (!events.length) return notFound();
 
-    // Sort newest → oldest
     const sorted = [...events].sort((a, b) => {
       const getSuffix = (s: string) =>
         parseInt(s.split("_").pop() || "0", 10);
       return getSuffix(b._id) - getSuffix(a._id);
     });
 
-    // ✅ If all good → show actual detail page
     return <EngineonDetailClient events={sorted} />;
   } catch (err) {
     console.error("❌ Fetch failed:", err);
