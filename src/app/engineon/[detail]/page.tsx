@@ -24,13 +24,13 @@ interface RawEngineonData {
 export default async function EngineonDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: { detail: string }; // 👈 match folder name [detail]
 }) {
   console.log("🟢 [EngineonDetailPage] params:", params);
 
-  const id = params.id; // ✅ plain object access — no Promise
+  const id = params.detail; // 👈 changed from params.id to params.detail
   if (!id) {
-    console.error("❌ Missing ID param");
+    console.error("❌ Missing detail param");
     return notFound();
   }
 
