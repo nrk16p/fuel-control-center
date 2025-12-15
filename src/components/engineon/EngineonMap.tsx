@@ -3,25 +3,9 @@
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import { useEffect } from "react";
 import "leaflet/dist/leaflet.css";
+import "leaflet-extra-markers/dist/css/leaflet.extra-markers.min.css";
+import "leaflet-extra-markers";
 import L from "leaflet";
-
-// ✅ Fix Leaflet marker assets for Next.js
-import iconUrl from "leaflet/dist/images/marker-icon.png";
-import iconShadow from "leaflet/dist/images/marker-shadow.png";
-
-// ✅ Use `.src` so Leaflet receives a string instead of StaticImageData
-const defaultIcon = L.icon({
-  iconUrl: (iconUrl as any).src ?? iconUrl.src,
-  shadowUrl: (iconShadow as any).src ?? iconShadow.src,
-  iconAnchor: [12, 41],
-});
-
-const activeIcon = L.icon({
-  iconUrl: (iconUrl as any).src ?? iconUrl.src,
-  shadowUrl: (iconShadow as any).src ?? iconShadow.src,
-  iconSize: [30, 50],
-  iconAnchor: [15, 50],
-});
 
 export interface EventData {
   _id: string;
@@ -40,6 +24,26 @@ interface Props {
   onSelect?: (id: string) => void;
 }
 
+/* -------------------------------------------------
+   🎨 Custom Marker Icons (Leaflet-Extra-Markers)
+------------------------------------------------- */
+const defaultIcon = L.ExtraMarkers.icon({
+  icon: "fa-truck", // Font Awesome icon
+  markerColor: "cyan", // red, blue, green, purple, yellow, orange, cyan, black, etc.
+  shape: "circle", // 'circle', 'square', 'star', 'penta'
+  prefix: "fa",
+});
+
+const activeIcon = L.ExtraMarkers.icon({
+  icon: "fa-star",
+  markerColor: "orange",
+  shape: "star",
+  prefix: "fa",
+});
+
+/* -------------------------------------------------
+   🗺️ Map Component
+------------------------------------------------- */
 export default function EngineonMap({ events, activeId, onSelect }: Props) {
   const validEvents = events.filter((e) => e.lat && e.lng);
 
@@ -54,8 +58,15 @@ export default function EngineonMap({ events, activeId, onSelect }: Props) {
   const center: [number, number] = [selectedEvent.lat!, selectedEvent.lng!];
 
   return (
-    <MapContainer center={center} zoom={13} scrollWheelZoom className="h-full w-full" key={activeId}>
-      {/* 🗺️ Base Map */}
+    <MapContainer
+      center={center}
+      zoom={13}
+      scrollWheelZoom
+      className="h-full w-full rounded-lg"
+      key={activeId}
+      zoomControl={true}
+    >
+      {/* 🌍 Base Map */}
       <TileLayer
         attribution='&copy; <a href="https://osm.org">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -96,12 +107,17 @@ export default function EngineonMap({ events, activeId, onSelect }: Props) {
   );
 }
 
-// 👁️ Smoothly pans to active marker
+/* -------------------------------------------------
+   👁️ AutoFocus — Smooth fly to marker
+------------------------------------------------- */
 function AutoFocus({ activeEvent }: { activeEvent: EventData }) {
   const map = useMap();
   useEffect(() => {
     if (activeEvent?.lat && activeEvent?.lng) {
-      map.setView([activeEvent.lat, activeEvent.lng], 14, { animate: true });
+      map.flyTo([activeEvent.lat, activeEvent.lng], 14, {
+        animate: true,
+        duration: 0.8,
+      });
     }
   }, [activeEvent, map]);
   return null;
