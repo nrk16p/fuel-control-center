@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import EngineonDetailClient from "@/components/engineon/EngineonDetailClient";
 
+export const dynamic = "force-dynamic"; // ✅ prevent static generation
 export const revalidate = 0;
 
 interface RawEngineonData {
@@ -33,23 +34,40 @@ export default async function EngineonDetailPage({
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000");
 
-  const res = await fetch(`${baseUrl}/api/raw-engineon?id=${encodeURIComponent(id)}`, {
-    cache: "no-store",
-  });
+  let payload: any[] = [];
 
-  if (!res.ok) return notFound();
+  try {
+    const res = await fetch(
+      `${baseUrl}/api/raw-engineon?id=${encodeURIComponent(id)}`,
+      { cache: "no-store" }
+    );
 
-  const payload = await res.json();
-  const events: RawEngineonData[] = Array.isArray(payload)
-    ? payload
-    : payload
-    ? [payload]
-    : [];
+    if (!res.ok) {
+      console.error("❌ API error:", res.status, await res.text());
+      return notFound();
+    }
 
-  if (!events.length) return notFound();
+    const data = await res.json();
+    // ✅ Ensure array type regardless of API shape
+    payload = Array.isArray(data)
+      ? data
+      : typeof data === "object" && data
+      ? Object.values(data)
+      : [];
 
-  const sorted = [...events].sort((a, b) => {
-    const getSuffix = (id: string) => parseInt(id.split("_").pop() || "0") || 0;
+  } catch (err) {
+    console.error("❌ Fetch error:", err);
+    return notFound();
+  }
+
+  if (!payload || payload.length === 0) {
+    console.warn("⚠️ No events found for", id);
+    return notFound();
+  }
+
+  // ✅ Sort newest first (_3 → _1)
+  const sorted = [...payload].sort((a, b) => {
+    const getSuffix = (v: string) => parseInt(v.split("_").pop() || "0", 10);
     return getSuffix(b._id) - getSuffix(a._id);
   });
 
