@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import EngineonDetailClient from "@/components/engineon/EngineonDetailClient";
 
-export const dynamic = "force-dynamic"; // ⛓️ force runtime SSR
-export const revalidate = 0; // no caching
+export const dynamic = "force-dynamic"; // ensure runtime render
+export const revalidate = 0;
 
 interface RawEngineonData {
   _id: string;
@@ -28,20 +28,20 @@ export default async function EngineonDetailPage({
 }) {
   console.log("🟡 [EngineonDetailPage] params:", params);
 
-  const { id } = params;
+  const id = params.id; // ✅ FIX — remove Promise wrapper
+  console.log("🟢 ID received:", id);
+
   if (!id) {
     console.error("❌ Missing ID param");
     return notFound();
   }
 
-  // ✅ Base URL (only used in dev)
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ||
     (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000");
 
-  // ✅ Use relative fetch on production (Vercel)
   const apiUrl =
     process.env.NODE_ENV === "production"
       ? `/api/raw-engineon?id=${encodeURIComponent(id)}`
@@ -66,7 +66,6 @@ export default async function EngineonDetailPage({
     return notFound();
   }
 
-  // ✅ Normalize to array
   const events: RawEngineonData[] = Array.isArray(payload)
     ? payload
     : payload
@@ -80,7 +79,6 @@ export default async function EngineonDetailPage({
     return notFound();
   }
 
-  // ✅ Sort newest first (_3 → _1)
   const sorted = [...events].sort((a, b) => {
     const getSuffix = (val: string) =>
       parseInt(val.split("_").pop() || "0", 10);
