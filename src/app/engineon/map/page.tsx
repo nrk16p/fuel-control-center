@@ -1,21 +1,32 @@
 import EngineonMap from "@/components/engineon/EngineonMap"
 
 export default async function EngineonMapPage() {
-  // fetch all raw_engineon docs for a date (example)
+  // 🌐 Define base URL for both local + production environments
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ||
     (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000")
 
+  // 📦 Fetch all raw_engineon docs for a specific date (example)
   const res = await fetch(`${baseUrl}/api/raw-engineon?date=01/12/2025`, {
     cache: "no-store",
   })
+
+  if (!res.ok) {
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-500">
+        ❌ Failed to load data ({res.status})
+      </div>
+    )
+  }
+
   const data = await res.json()
 
   return (
     <div className="h-[calc(100vh-80px)]">
-      <EngineonMap data={data} />
+      {/* ✅ Correct prop names */}
+      <EngineonMap events={data} activeId={null} />
     </div>
   )
 }
