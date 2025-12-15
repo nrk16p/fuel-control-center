@@ -1,6 +1,24 @@
 import { notFound } from "next/navigation";
 import EngineonDetailClient from "@/components/engineon/EngineonDetailClient";
 
+// ──────────────────────────────────────────────
+// ⚙️ Helper: Resolve base URL (works on local & Vercel)
+// ──────────────────────────────────────────────
+function getBaseUrl() {
+  if (typeof window !== "undefined") {
+    // Client-side (only for client components)
+    return window.location.origin;
+  }
+
+  // Server-side (during SSR)
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
+// ──────────────────────────────────────────────
+// ⚙️ Config
+// ──────────────────────────────────────────────
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -21,28 +39,38 @@ interface RawEngineonData {
   nearest_plant?: string | null;
 }
 
+// ──────────────────────────────────────────────
+// 🚀 Main Page Component
+// ──────────────────────────────────────────────
 export default async function EngineonDetailPage({
   params,
 }: {
-  params: { detail: string }; // 👈 match folder name [detail]
+  params: { detail: string };
 }) {
   console.log("🟢 [EngineonDetailPage] params:", params);
 
-  const id = params.detail; // 👈 changed from params.id to params.detail
+  const id = params.detail;
   if (!id) {
     console.error("❌ Missing detail param");
     return notFound();
   }
 
-  const apiUrl = `/api/raw-engineon?id=${encodeURIComponent(id)}`;
-  console.log("🌐 Fetching:", apiUrl);
+  const baseUrl = getBaseUrl();
+  const apiUrl = `${baseUrl}/api/raw-engineon?id=${encodeURIComponent(id)}`;
+
+  console.log("🌐 Fetching from:", apiUrl);
 
   try {
     const res = await fetch(apiUrl, { cache: "no-store" });
     console.log("🔵 Fetch status:", res.status);
-    if (!res.ok) return notFound();
+
+    if (!res.ok) {
+      console.error("❌ API response not ok:", res.status);
+      return notFound();
+    }
 
     const payload = await res.json();
+
     const events: RawEngineonData[] = Array.isArray(payload)
       ? payload
       : payload
@@ -56,6 +84,7 @@ export default async function EngineonDetailPage({
       return notFound();
     }
 
+    // Sort newest → oldest
     const sorted = [...events].sort((a, b) => {
       const getSuffix = (s: string) =>
         parseInt(s.split("_").pop() || "0", 10);
