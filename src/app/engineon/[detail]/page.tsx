@@ -1,14 +1,11 @@
 import { notFound } from "next/navigation";
 import EngineonDetailClient from "@/components/engineon/EngineonDetailClient";
 
-function getBaseUrl() {
-  if (typeof window !== "undefined") return window.location.origin;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "https://fuel-control-center.vercel.app"; // ✅ your production domain
-}
-
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+// ✅ Your production domain (fallback for server)
+const PROD_DOMAIN = "https://fuel-control-center.vercel.app";
 
 interface RawEngineonData {
   _id: string;
@@ -38,15 +35,23 @@ export default async function EngineonDetailPage(props: {
 
   if (!id) return notFound();
 
-  const baseUrl = getBaseUrl();
-  const apiUrl = `${baseUrl}/api/raw-engineon?id=${encodeURIComponent(id)}`;
+  // ✅ Always use absolute URL for SSR (avoids localhost problem)
+  const apiUrl = `${PROD_DOMAIN}/api/raw-engineon?id=${encodeURIComponent(id)}`;
   console.log("🌐 Fetching:", apiUrl);
 
   try {
-    const res = await fetch(apiUrl, { cache: "no-store" });
+    const res = await fetch(apiUrl, {
+      cache: "no-store",
+      // ✅ Optional but recommended to prevent edge caching
+      headers: { "Cache-Control": "no-cache" },
+    });
+
     console.log("🔵 Fetch status:", res.status);
 
-    if (!res.ok) return notFound();
+    if (!res.ok) {
+      console.error("❌ API returned non-OK response:", res.status);
+      return notFound();
+    }
 
     const payload = await res.json();
     const events: RawEngineonData[] = Array.isArray(payload)
@@ -56,7 +61,11 @@ export default async function EngineonDetailPage(props: {
       : [];
 
     console.log("✅ Events count:", events.length);
-    if (!events.length) return notFound();
+
+    if (!events.length) {
+      console.warn("⚠️ No events found for", id);
+      return notFound();
+    }
 
     const sorted = [...events].sort((a, b) => {
       const getSuffix = (s: string) =>
