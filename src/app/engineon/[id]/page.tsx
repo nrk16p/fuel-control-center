@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import EngineonDetailClient from "@/components/engineon/EngineonDetailClient";
 
-export const dynamic = "force-dynamic"; // ✅ Force SSR (fixes 404)
-export const revalidate = 0;
+export const dynamic = "force-dynamic"; // ⛓️ force runtime SSR
+export const revalidate = 0; // no caching
 
 interface RawEngineonData {
   _id: string;
@@ -24,35 +24,70 @@ interface RawEngineonData {
 export default async function EngineonDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }> | { id: string };
+  params: { id: string };
 }) {
-  const { id } = await Promise.resolve(params);
+  console.log("🟡 [EngineonDetailPage] params:", params);
 
+  const { id } = params;
+  if (!id) {
+    console.error("❌ Missing ID param");
+    return notFound();
+  }
+
+  // ✅ Base URL (only used in dev)
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ||
     (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000");
 
-  const res = await fetch(`${baseUrl}/api/raw-engineon?id=${encodeURIComponent(id)}`, {
-    cache: "no-store",
-  });
+  // ✅ Use relative fetch on production (Vercel)
+  const apiUrl =
+    process.env.NODE_ENV === "production"
+      ? `/api/raw-engineon?id=${encodeURIComponent(id)}`
+      : `${baseUrl}/api/raw-engineon?id=${encodeURIComponent(id)}`;
 
-  if (!res.ok) return notFound();
+  console.log("🌐 Fetching:", apiUrl);
 
-  const payload = await res.json();
+  let payload: any;
+  try {
+    const res = await fetch(apiUrl, { cache: "no-store" });
+    console.log("🔵 Fetch status:", res.status);
+
+    if (!res.ok) {
+      console.error("❌ API fetch failed:", res.status, await res.text());
+      return notFound();
+    }
+
+    payload = await res.json();
+    console.log("🧩 Payload type:", Array.isArray(payload) ? "array" : typeof payload);
+  } catch (err) {
+    console.error("❌ Fetch or parse error:", err);
+    return notFound();
+  }
+
+  // ✅ Normalize to array
   const events: RawEngineonData[] = Array.isArray(payload)
     ? payload
     : payload
     ? [payload]
     : [];
 
-  if (!events.length) return notFound();
+  console.log("✅ Events count:", events.length);
 
+  if (!events.length) {
+    console.warn("⚠️ No events found for", id);
+    return notFound();
+  }
+
+  // ✅ Sort newest first (_3 → _1)
   const sorted = [...events].sort((a, b) => {
-    const getSuffix = (id: string) => parseInt(id.split("_").pop() || "0") || 0;
+    const getSuffix = (val: string) =>
+      parseInt(val.split("_").pop() || "0", 10);
     return getSuffix(b._id) - getSuffix(a._id);
   });
+
+  console.log("✅ Sorted events:", sorted.map((e) => e._id));
 
   return <EngineonDetailClient events={sorted} />;
 }
