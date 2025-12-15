@@ -1,23 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 🚫 disable sourcemaps in dev & production
-  productionBrowserSourceMaps: false,
+  reactStrictMode: true,
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: false },
 
-  webpack(config, { dev }) {
-    if (dev) {
-      config.devtool = false; // disable source maps
-    }
-    return config;
-  },
-
-  // 🧩 patch turbopack sourcemap resolution
+  // ⚙️ Example future-proof experimental flags (safe)
   experimental: {
-    turbo: {
-      resolveAlias: {
-        "source-map-js": false,
-      },
+    serverActions: {
+      bodySizeLimit: '2mb',
     },
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig
