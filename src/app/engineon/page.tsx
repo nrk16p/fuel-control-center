@@ -136,10 +136,21 @@ export default function EngineOnPage() {
         version={version}
         setVersion={setVersion}
         month={month}
-        setMonth={setMonth}
+        setMonth={(v) => {
+          if (v === "all") {
+            setMonth("all")
+          } else {
+            setMonth(Number(v))
+          }
+        }}
         year={year}
-        setYear={setYear}
-        versionOptions={versionOptions}
+        setYear={(v) => {
+          if (v === "all") {
+            setYear("all")
+          } else {
+            setYear(Number(v))
+          }
+        }}        versionOptions={versionOptions}
         yearOptions={yearOptions}
         onReset={resetFilters}
       />
