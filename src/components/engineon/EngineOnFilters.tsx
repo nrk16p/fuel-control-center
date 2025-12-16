@@ -1,9 +1,9 @@
 "use client"
 
+import React from "react"
 import { Search, RotateCcw } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import React from "react"
 
 /* -----------------------------
    Thai Month / Year helpers
@@ -29,8 +29,8 @@ const toThaiYear = (year: number) => year + 543
 /* -----------------------------
    Types
 ------------------------------ */
-type AllOrNumber = number | "all"
-type AllOrString = string | "all"
+export type AllOrNumber = number | "all"
+export type AllOrString = string | "all"
 
 interface Props {
   search: string
@@ -68,7 +68,7 @@ export function EngineOnFilters({
 }: Props) {
   return (
     <div className="bg-white rounded-xl border shadow-sm p-4 flex flex-wrap gap-4 items-end">
-      {/* Search */}
+      {/* 🔍 Search */}
       <div className="w-64">
         <label className="text-xs text-gray-500">ค้นหา</label>
         <div className="relative">
@@ -78,9 +78,7 @@ export function EngineOnFilters({
           />
           <Input
             value={search}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setSearch(e.target.value)
-            }
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="ทะเบียน / คนขับ"
             className="pl-8"
           />
@@ -88,10 +86,10 @@ export function EngineOnFilters({
       </div>
 
       {/* Version */}
-      <FilterSelect
+      <FilterSelect<AllOrString>
         label="Version"
         value={version}
-        onChange={(v) => setVersion(v === "all" ? "all" : v)}
+        onChange={setVersion}
       >
         <option value="all">ทั้งหมด</option>
         {versionOptions.map((v) => (
@@ -101,8 +99,8 @@ export function EngineOnFilters({
         ))}
       </FilterSelect>
 
-      {/* Month (Thai) */}
-      <FilterSelect
+      {/* Month */}
+      <FilterSelect<AllOrNumber>
         label="เดือน"
         value={month}
         onChange={(v) =>
@@ -111,17 +109,17 @@ export function EngineOnFilters({
       >
         <option value="all">ทุกเดือน</option>
         {THAI_MONTHS.slice(1).map((name, idx) => {
-          const monthValue = idx + 1
+          const m = idx + 1
           return (
-            <option key={monthValue} value={monthValue}>
+            <option key={m} value={m}>
               {name}
             </option>
           )
         })}
       </FilterSelect>
 
-      {/* Year (Thai Buddhist year display) */}
-      <FilterSelect
+      {/* Year */}
+      <FilterSelect<AllOrNumber>
         label="ปี"
         value={year}
         onChange={(v) =>
@@ -149,28 +147,28 @@ export function EngineOnFilters({
 }
 
 /* -----------------------------
-   Reusable Select (Typed)
+   Reusable Select (Generic)
 ------------------------------ */
-interface FilterSelectProps {
+interface FilterSelectProps<T extends string | number> {
   label: string
-  value: string | number
-  onChange: (v: string) => void
+  value: T
+  onChange: (v: T) => void
   children: React.ReactNode
 }
 
-function FilterSelect({
+function FilterSelect<T extends string | number>({
   label,
   value,
   onChange,
   children,
-}: FilterSelectProps) {
+}: FilterSelectProps<T>) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs text-gray-500">{label}</label>
       <select
         value={value}
-        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-          onChange(e.target.value)
+        onChange={(e) =>
+          onChange(e.target.value as T)
         }
         className="border rounded px-3 py-2 bg-white"
       >
