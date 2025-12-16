@@ -9,19 +9,19 @@ export default function EngineOnPage() {
   const [data, setData] = useState<EngineTripSummary[]>([])
   const [loading, setLoading] = useState(true)
 
-  // filters
-  const [search, setSearch] = useState("")
+  // 🔍 filters
+  const [search, setSearch] = useState<string>("")
   const [version, setVersion] = useState<string>("all")
   const [month, setMonth] = useState<number | "all">("all")
   const [year, setYear] = useState<number | "all">("all")
 
-  // sorting
+  // ↕ sorting
   const [sortKey, setSortKey] = useState<SortKey>("Date")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
 
-  // pagination
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(25)
+  // 📄 pagination
+  const [page, setPage] = useState<number>(1)
+  const [pageSize, setPageSize] = useState<number>(25)
 
   // ─────────────────────────────────────
   // Fetch data
@@ -40,14 +40,15 @@ export default function EngineOnPage() {
   // Options
   // ─────────────────────────────────────
   const versionOptions = useMemo(
-    () => Array.from(new Set(data.map((d) => d.version_type))).filter(Boolean),
+    () =>
+      Array.from(new Set(data.map((d) => d.version_type))).filter(Boolean),
     [data]
   )
 
   const yearOptions = useMemo(
     () =>
       Array.from(new Set(data.map((d) => d.year)))
-        .filter(Boolean)
+        .filter((y): y is number => typeof y === "number")
         .sort((a, b) => b - a),
     [data]
   )
@@ -67,9 +68,17 @@ export default function EngineOnPage() {
       )
     }
 
-    if (version !== "all") temp = temp.filter((d) => d.version_type === version)
-    if (month !== "all") temp = temp.filter((d) => d.month === month)
-    if (year !== "all") temp = temp.filter((d) => d.year === year)
+    if (version !== "all") {
+      temp = temp.filter((d) => d.version_type === version)
+    }
+
+    if (month !== "all") {
+      temp = temp.filter((d) => d.month === month)
+    }
+
+    if (year !== "all") {
+      temp = temp.filter((d) => d.year === year)
+    }
 
     return temp
   }, [data, search, version, month, year])
@@ -136,21 +145,16 @@ export default function EngineOnPage() {
         version={version}
         setVersion={setVersion}
         month={month}
-        setMonth={(v) => {
-          if (v === "all") {
-            setMonth("all")
-          } else {
-            setMonth(Number(v))
-          }
+        setMonth={(v: string | number) => {
+          if (v === "all") setMonth("all")
+          else setMonth(Number(v))
         }}
         year={year}
-        setYear={(v) => {
-          if (v === "all") {
-            setYear("all")
-          } else {
-            setYear(Number(v))
-          }
-        }}        versionOptions={versionOptions}
+        setYear={(v: string | number) => {
+          if (v === "all") setYear("all")
+          else setYear(Number(v))
+        }}
+        versionOptions={versionOptions}
         yearOptions={yearOptions}
         onReset={resetFilters}
       />
