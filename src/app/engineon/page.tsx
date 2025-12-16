@@ -4,14 +4,15 @@ import { useEffect, useMemo, useState } from "react"
 import { EngineOnTable } from "@/components/engineon/EngineOnTable"
 import { EngineOnFilters } from "@/components/engineon/EngineOnFilters"
 import type { EngineTripSummary, SortKey } from "@/components/engineon/types"
+import { exportEngineOnExcel } from "@/lib/exportEngineOnExcel"
 
 export default function EngineOnPage() {
   const [data, setData] = useState<EngineTripSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   // 🔍 filters
-  const [search, setSearch] = useState<string>("")
-  const [version, setVersion] = useState<string>("all")
+  const [search, setSearch] = useState("")
+  const [version, setVersion] = useState<string | "all">("all")
   const [month, setMonth] = useState<number | "all">("all")
   const [year, setYear] = useState<number | "all">("all")
 
@@ -20,12 +21,12 @@ export default function EngineOnPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
 
   // 📄 pagination
-  const [page, setPage] = useState<number>(1)
-  const [pageSize, setPageSize] = useState<number>(25)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
 
-  // ─────────────────────────────────────
-  // Fetch data
-  // ─────────────────────────────────────
+  /* ─────────────────────────────────────
+     Fetch data
+  ───────────────────────────────────── */
   useEffect(() => {
     fetch("/api/engineon/summary")
       .then((r) => r.json())
@@ -36,9 +37,9 @@ export default function EngineOnPage() {
       .catch(() => setLoading(false))
   }, [])
 
-  // ─────────────────────────────────────
-  // Options
-  // ─────────────────────────────────────
+  /* ─────────────────────────────────────
+     Options
+  ───────────────────────────────────── */
   const versionOptions = useMemo(
     () =>
       Array.from(new Set(data.map((d) => d.version_type))).filter(Boolean),
@@ -53,9 +54,9 @@ export default function EngineOnPage() {
     [data]
   )
 
-  // ─────────────────────────────────────
-  // Filtering
-  // ─────────────────────────────────────
+  /* ─────────────────────────────────────
+     Filtering
+  ───────────────────────────────────── */
   const filtered = useMemo(() => {
     let temp = [...data]
     const q = search.toLowerCase()
@@ -83,9 +84,9 @@ export default function EngineOnPage() {
     return temp
   }, [data, search, version, month, year])
 
-  // ─────────────────────────────────────
-  // Sorting
-  // ─────────────────────────────────────
+  /* ─────────────────────────────────────
+     Sorting
+  ───────────────────────────────────── */
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
       const av = a[sortKey]
@@ -104,9 +105,9 @@ export default function EngineOnPage() {
     })
   }, [filtered, sortKey, sortDir])
 
-  // ─────────────────────────────────────
-  // Pagination
-  // ─────────────────────────────────────
+  /* ─────────────────────────────────────
+     Pagination
+  ───────────────────────────────────── */
   const total = sorted.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
@@ -132,33 +133,54 @@ export default function EngineOnPage() {
     setPage(1)
   }
 
-  // ─────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────
+  /* ─────────────────────────────────────
+     Export
+  ───────────────────────────────────── */
+  const handleExport = () => {
+    exportEngineOnExcel(
+      sorted, // ✅ export หลัง filter + sort
+      `engineon_${year !== "all" ? year : "all"}_${
+        month !== "all" ? month : "all"
+      }.xlsx`
+    )
+  }
+
+  /* ─────────────────────────────────────
+     Render
+  ───────────────────────────────────── */
   return (
     <div className="p-8 space-y-6">
-      <h1 className="text-2xl font-bold">🛠️ Engine-On Trip Summary</h1>
+      {/* Header + Export */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">
+          🛠️ Engine-On Trip Summary
+        </h1>
 
+        <button
+          onClick={handleExport}
+          disabled={sorted.length === 0}
+          className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 text-sm"
+        >
+          📥 Export Excel ({sorted.length})
+        </button>
+      </div>
+
+      {/* Filters */}
       <EngineOnFilters
         search={search}
         setSearch={setSearch}
         version={version}
         setVersion={setVersion}
         month={month}
-        setMonth={(v: string | number) => {
-          if (v === "all") setMonth("all")
-          else setMonth(Number(v))
-        }}
+        setMonth={setMonth}
         year={year}
-        setYear={(v: string | number) => {
-          if (v === "all") setYear("all")
-          else setYear(Number(v))
-        }}
+        setYear={setYear}
         versionOptions={versionOptions}
         yearOptions={yearOptions}
         onReset={resetFilters}
       />
 
+      {/* Table */}
       {loading ? (
         <div className="text-gray-500">Loading...</div>
       ) : (
