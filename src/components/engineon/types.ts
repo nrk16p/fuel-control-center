@@ -3,12 +3,12 @@
 export interface EngineTripSummary {
   _id: string
 
-  // ───────── Basic info ─────────
+  // ───────── Basic ─────────
   Supervisor?: string
   TruckPlateNo: string
   Date: string
 
-  // ───────── Engine-on ─────────
+  // ───────── Engine-On ─────────
   TotalMinutes: number
   Duration_str: string
 
@@ -21,13 +21,13 @@ export interface EngineTripSummary {
   year: number
   month: number
 
-  // ───────── Extra (used in table) ─────────
+  // ───────── Extra (optional but used in UI) ─────────
   "สำรองเวลาโหลด"?: number        // นาที
   "ส่วนต่าง"?: number             // นาที (number)
   "ส่วนต่าง_hhmm"?: string        // HH:mm
 }
 
-/* ================= Sorting keys ================= */
+/* ───────── Sorting keys ───────── */
 
 export type SortKey =
   | "Supervisor"

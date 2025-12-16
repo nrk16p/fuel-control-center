@@ -1,9 +1,9 @@
 "use client"
 
+import React from "react"
 import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { EngineTripSummary, SortKey } from "./types"
-import React from "react"
 
 /* ================= Types ================= */
 
@@ -16,6 +16,19 @@ interface ThProps {
 interface TdProps {
   children: React.ReactNode
   center?: boolean
+}
+
+interface Props {
+  data: EngineTripSummary[]
+  sortKey: SortKey
+  sortDir: "asc" | "desc"
+  onSort: (k: SortKey) => void
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  onPageChange: (p: number) => void
+  onPageSizeChange: (n: number) => void
 }
 
 /* ================= Component ================= */
@@ -31,18 +44,7 @@ export function EngineOnTable({
   totalPages,
   onPageChange,
   onPageSizeChange,
-}: {
-  data: EngineTripSummary[]
-  sortKey: SortKey
-  sortDir: "asc" | "desc"
-  onSort: (k: SortKey) => void
-  page: number
-  pageSize: number
-  total: number
-  totalPages: number
-  onPageChange: (p: number) => void
-  onPageSizeChange: (n: number) => void
-}) {
+}: Props) {
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("th-TH")
 
@@ -65,74 +67,82 @@ export function EngineOnTable({
         </thead>
 
         <tbody>
-          {data.map((r) => (
-            <tr key={r._id} className="border-t hover:bg-gray-50">
-              <Td>{r.Supervisor || "-"}</Td>
-              <Td>{r.TruckPlateNo}</Td>
-              <Td>{formatDate(r.Date)}</Td>
-              <Td>{r.Duration_str}</Td>
+          {data.map((r) => {
+            const diffMin = r["ส่วนต่าง"] ?? 0
+            const diffStr = r["ส่วนต่าง_hhmm"]
+            const reserve = r["สำรองเวลาโหลด"]
+            const liter = r["จำนวนลิตร"]
 
-              {/* สำรองเวลาโหลด */}
-              <Td>
-                {r["สำรองเวลาโหลด"] != null ? (
-                  <span className="text-blue-600 font-medium">
-                    {r["สำรองเวลาโหลด"].toFixed(0)} นาที
-                  </span>
-                ) : (
-                  <span className="text-gray-400">-</span>
-                )}
-              </Td>
+            return (
+              <tr key={r._id} className="border-t hover:bg-gray-50">
+                <Td>{r.Supervisor || "-"}</Td>
+                <Td>{r.TruckPlateNo}</Td>
+                <Td>{formatDate(r.Date)}</Td>
+                <Td>{r.Duration_str}</Td>
 
-              {/* ส่วนต่าง */}
-              <Td>
-                {r["ส่วนต่าง_hhmm"] ? (
-                  <span
-                    className={`font-semibold ${
-                      r["ส่วนต่าง"] > 0
-                        ? "text-red-600"
-                        : "text-gray-500"
-                    }`}
+                {/* สำรองเวลาโหลด */}
+                <Td>
+                  {reserve != null ? (
+                    <span className="text-blue-600 font-medium">
+                      {reserve.toFixed(0)} นาที
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </Td>
+
+                {/* ส่วนต่าง */}
+                <Td>
+                  {diffStr ? (
+                    <span
+                      className={`font-semibold ${
+                        diffMin > 0
+                          ? "text-red-600"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {diffStr}
+                      {diffMin > 0 && " ⚠️"}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </Td>
+
+                <Td>{r["#trip"] ?? "-"}</Td>
+
+                {/* จำนวนลิตร */}
+                <Td>
+                  {liter != null ? (
+                    <span
+                      className={`font-semibold ${
+                        liter > 2
+                          ? "text-red-600"
+                          : "text-yellow-600"
+                      }`}
+                    >
+                      {liter.toFixed(2)} L
+                      {liter > 2 && " 🔥"}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">N/A</span>
+                  )}
+                </Td>
+
+                <Td>{r.version_type}</Td>
+
+                <Td center>
+                  <a
+                    href={`/engineon/${r._id}`}
+                    className="inline-flex w-9 h-9 items-center justify-center rounded-full bg-blue-50 hover:bg-blue-100"
+                    title="View map"
                   >
-                    {r["ส่วนต่าง_hhmm"]}
-                    {r["ส่วนต่าง"] > 0 && " ⚠️"}
-                  </span>
-                ) : (
-                  <span className="text-gray-400">-</span>
-                )}
-              </Td>
-
-              <Td>{r["#trip"] ?? "-"}</Td>
-
-              {/* จำนวนลิตร */}
-              <Td>
-                {r["จำนวนลิตร"] != null ? (
-                  <span
-                    className={`font-semibold ${
-                      r["จำนวนลิตร"] > 2
-                        ? "text-red-600"
-                        : "text-yellow-600"
-                    }`}
-                  >
-                    {r["จำนวนลิตร"].toFixed(2)} L
-                    {r["จำนวนลิตร"] > 2 && " 🔥"}
-                  </span>
-                ) : (
-                  <span className="text-gray-400">N/A</span>
-                )}
-              </Td>
-
-              <Td>{r.version_type}</Td>
-
-              <Td center>
-                <a
-                  href={`/engineon/${r._id}`}
-                  className="inline-flex w-9 h-9 items-center justify-center rounded-full bg-blue-50 hover:bg-blue-100"
-                >
-                  🗺️
-                </a>
-              </Td>
-            </tr>
-          ))}
+                    🗺️
+                  </a>
+                </Td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
 
@@ -175,9 +185,9 @@ function Th({ children, onClick, center }: ThProps) {
   return (
     <th
       onClick={onClick}
-      className={`p-3 select-none ${onClick ? "cursor-pointer" : ""} ${
-        center ? "text-center" : "text-left"
-      }`}
+      className={`p-3 select-none ${
+        onClick ? "cursor-pointer" : ""
+      } ${center ? "text-center" : "text-left"}`}
     >
       <div className="flex items-center gap-1">
         {children}
