@@ -1,14 +1,12 @@
 import EngineonMap from "@/components/engineon/EngineonMap"
 
 export default async function EngineonMapPage() {
-  // 🌐 Define base URL for both local + production environments
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ||
     (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000")
 
-  // 📦 Fetch all raw_engineon docs for a specific date (example)
   const res = await fetch(`${baseUrl}/api/raw-engineon?date=01/12/2025`, {
     cache: "no-store",
   })
@@ -25,8 +23,11 @@ export default async function EngineonMapPage() {
 
   return (
     <div className="h-[calc(100vh-80px)]">
-      {/* ✅ Correct prop names */}
-      <EngineonMap events={data} activeId={null} />
+      <EngineonMap
+        events={data}
+        activeId={null}
+        hoverId={null}   {/* ✅ เพิ่มบรรทัดนี้ */}
+      />
     </div>
   )
 }
