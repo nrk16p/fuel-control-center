@@ -2,8 +2,21 @@
 
 import dynamic from "next/dynamic"
 import type { FC } from "react"
+import type { EventData } from "./EngineonMap"
 
-// ✅ Dynamically load the actual Leaflet map
+/* -------------------------------------------------
+   🧩 Props (CONTRACT กลาง)
+------------------------------------------------- */
+export interface EngineonMapClientProps {
+  events: EventData[]
+  activeId: string | null
+  hoverId: string | null
+  onSelect?: (id: string) => void
+}
+
+/* -------------------------------------------------
+   🗺️ Dynamic Map Loader
+------------------------------------------------- */
 const EngineonMap = dynamic(() => import("./EngineonMap"), {
   ssr: false,
   loading: () => (
@@ -13,33 +26,26 @@ const EngineonMap = dynamic(() => import("./EngineonMap"), {
   ),
 })
 
-interface RawEngineonData {
-  _id: string
-  lat?: number
-  lng?: number
-  สถานที่?: string
-  nearest_plant?: string | null
-  total_engine_on_min: number
-  total_engine_on_hr?: number
-  event_id?: number
-}
-
-interface Props {
-  events: RawEngineonData[]
-  selectedId?: string
-}
-
 /**
- * ✅ EngineonMapClient
- * - Handles safe rendering of the dynamic map
- * - Avoids hook mismatches (no early returns)
- * - Passes selectedId to highlight markers
+ * EngineonMapClient
+ * - Adapter ระหว่าง DetailClient ↔ Leaflet map
+ * - ปลอดภัยกับ SSR
+ * - Props ตรงกับ EngineonMap 100%
  */
-const EngineonMapClient: FC<Props> = ({ events = [], selectedId }) => {
-  // Always render EngineonMap even if events empty → prevents hook mismatch
+const EngineonMapClient: FC<EngineonMapClientProps> = ({
+  events,
+  activeId,
+  hoverId,
+  onSelect,
+}) => {
   return (
     <div className="w-full h-full">
-      <EngineonMap events={events} activeId={selectedId ?? null} />
+      <EngineonMap
+        events={events}
+        activeId={activeId}
+        hoverId={hoverId}
+        onSelect={onSelect}
+      />
     </div>
   )
 }
