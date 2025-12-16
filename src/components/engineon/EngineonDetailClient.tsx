@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import EngineonMapClient from "@/components/engineon/EngineonMapClient"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -21,7 +21,7 @@ dayjs.locale("th")
 /* -------------------------------------------------
    📦 Types
 ------------------------------------------------- */
-interface RawEngineonData {
+export interface RawEngineonData {
   _id: string
   date: string
   count_records: number
@@ -41,13 +41,13 @@ interface RawEngineonData {
 /* -------------------------------------------------
    🎨 Helpers
 ------------------------------------------------- */
-function engineOnLevel(min: number) {
+function engineOnLevel(min: number): "red" | "orange" | "green" {
   if (min > 60) return "red"
   if (min >= 30) return "orange"
   return "green"
 }
 
-function engineOnColor(min: number) {
+function engineOnColor(min: number): string {
   if (min > 60) return "text-red-600"
   if (min >= 30) return "text-orange-600"
   return "text-green-600"
@@ -61,9 +61,25 @@ export default function EngineonDetailClient({
 }: {
   events: RawEngineonData[]
 }) {
+  /* ───── Guard: no data ───── */
+  if (!events || events.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-500">
+        No engine-on data available
+      </div>
+    )
+  }
+
   const [selected, setSelected] = useState<RawEngineonData>(events[0])
   const [plantFilter, setPlantFilter] = useState<string>("all")
   const [hoverId, setHoverId] = useState<string | null>(null)
+
+  /* ───── keep selected valid when filter changes ───── */
+  useEffect(() => {
+    if (!selected || !events.find((e) => e._id === selected._id)) {
+      setSelected(events[0])
+    }
+  }, [events, selected])
 
   /* 🌱 Unique plant list */
   const plants = useMemo(() => {
@@ -96,33 +112,32 @@ export default function EngineonDetailClient({
     <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* ───────────────── Sidebar ───────────────── */}
       <aside className="w-full md:w-[38%] lg:w-[30%] xl:w-[28%] bg-white border-r shadow-sm overflow-y-auto p-6 space-y-6">
-        
         {/* Header */}
         <header className="sticky top-0 bg-white pb-2 border-b z-10">
           <h1 className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-2">
             Engine-On Details <Badge variant="secondary">v2</Badge>
           </h1>
+
           <p className="text-sm text-gray-600">
-            🚚 ทะเบียนรถ {" "}
+            🚚 ทะเบียนรถ{" "}
             <span className="font-semibold text-blue-600">
               {selected["ทะเบียนพาหนะ"]}
             </span>
           </p>
+
           <p className="text-xs text-gray-400">
             Showing {filteredEvents.length} event
-            {filteredEvents.length > 1 ? "s" : ""}
+            {filteredEvents.length !== 1 && "s"}
           </p>
 
-          {/* 📊 Summary Badge */}
+          {/* Summary */}
           <div className="flex gap-2 mt-2">
-            <Badge className="bg-red-100 text-red-700">
-              🔴  {summary.red}
-            </Badge>
+            <Badge className="bg-red-100 text-red-700">🔴 {summary.red}</Badge>
             <Badge className="bg-orange-100 text-orange-700">
-              🟠  {summary.orange}
+              🟠 {summary.orange}
             </Badge>
             <Badge className="bg-green-100 text-green-700">
-              🟢  {summary.green}
+              🟢 {summary.green}
             </Badge>
           </div>
         </header>
@@ -178,10 +193,8 @@ export default function EngineonDetailClient({
             }
           />
           <Info label="สถานที่" value={selected.สถานที่ ?? "-"} />
-          <Info
-            label="Nearest Plant"
-            value={selected.nearest_plant ?? "-"}
-          />
+          <Info label="Nearest Plant" value={selected.nearest_plant ?? "-"} />
+
           <div className="flex gap-2">
             <Badge variant="outline">
               Lat {selected.lat?.toFixed(6) ?? "-"}
@@ -202,7 +215,7 @@ export default function EngineonDetailClient({
           </a>
         </div>
 
-        {/* All Events List */}
+        {/* All Events */}
         <section className="pt-4">
           <p className="text-xs font-semibold text-gray-600 mb-2">
             All Events
