@@ -1,236 +1,175 @@
 "use client"
 
-import * as React from "react"
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-} from "@tanstack/react-table"
+import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import * as XLSX from "xlsx"
-import { saveAs } from "file-saver"
-import { MapPin } from "lucide-react"
+import { EngineTripSummary, SortKey } from "./types"
 
-export interface EngineData {
-  _id: string
-  date: string
-  total_engine_on_hr: number
-  total_engine_on_min: number
-  version_type: string
-  ["ทะเบียนพาหนะ"]: string
+interface Props {
+  data: EngineTripSummary[]
+  sortKey: SortKey
+  sortDir: "asc" | "desc"
+  onSort: (k: SortKey) => void
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  onPageChange: (p: number) => void
+  onPageSizeChange: (n: number) => void
 }
 
-export function EngineOnTable({ data }: { data: EngineData[] }) {
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [search, setSearch] = React.useState("")
-  const [page, setPage] = React.useState(1)
-  const [pageSize, setPageSize] = React.useState<number>(50)
+export function EngineOnTable({
+  data,
+  sortKey,
+  sortDir,
+  onSort,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+  onPageSizeChange,
+}: Props) {
 
-  // 🔎 Filter data by search
-  const filteredData = React.useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return data
-    return data.filter((d) => d["ทะเบียนพาหนะ"]?.toLowerCase().includes(q))
-  }, [data, search])
-
-  // 📄 Pagination logic
-  const total = filteredData.length
-  const effectivePageSize = pageSize === 0 ? Math.max(total, 1) : pageSize
-  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize))
-  const safePage = Math.min(page, totalPages)
-
-  const paginatedData =
-    pageSize === 0
-      ? filteredData
-      : filteredData.slice(
-          (safePage - 1) * effectivePageSize,
-          safePage * effectivePageSize
-        )
-
-  React.useEffect(() => {
-    setPage(1)
-  }, [search, pageSize])
-
-  // 🧱 Table columns
-  const columns = React.useMemo<ColumnDef<EngineData>[]>(() => [
-    { header: "ทะเบียนพาหนะ", accessorKey: "ทะเบียนพาหนะ" },
-    { header: "วันที่", accessorKey: "date" },
-    {
-      header: "Engine–On (ชม.)",
-      accessorKey: "total_engine_on_hr",
-      cell: ({ getValue }) => (Number(getValue()) || 0).toFixed(2),
-    },
-    {
-      header: "Engine–On (นาที)",
-      accessorKey: "total_engine_on_min",
-      cell: ({ getValue }) => (Number(getValue()) || 0).toFixed(2),
-    },
-    { header: "Version", accessorKey: "version_type" },
-    {
-      header: "Action",
-      cell: ({ row }) => {
-        const id = row.original._id
-        return (
-          <a
-            href={`/engineon/${id}`}
-            className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 transition"
-            title="ดูแผนที่"
-          >
-            <MapPin className="w-5 h-5" />
-          </a>
-        )
-      },
-    },
-  ], [])
-
-  const table = useReactTable({
-    data: paginatedData,
-    columns,
-    state: { sorting },
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-  })
-
-  // 📤 Export filtered data to Excel
-  const handleExport = () => {
-    const ws = XLSX.utils.json_to_sheet(filteredData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "EngineOn")
-    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" })
-    saveAs(
-      new Blob([buf], { type: "application/octet-stream" }),
-      `EngineOn_${new Date().toISOString().slice(0, 10)}.xlsx`
-    )
-  }
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString("th-TH")
 
   return (
-    <div className="space-y-4">
-      {/* 🔍 Top controls */}
-      <div className="flex flex-wrap gap-3 items-center justify-between">
-        <Input
-          placeholder="🔍 ค้นหาทะเบียนพาหนะ..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-64"
-        />
-        <Button onClick={handleExport}>📥 Export Excel</Button>
-      </div>
+    <div className="bg-white rounded-xl border overflow-hidden">
+      <table className="min-w-full text-sm">
+        <thead className="bg-gray-100">
+          <tr>
+            <Th onClick={() => onSort("Supervisor")}>Driver</Th>
+            <Th onClick={() => onSort("TruckPlateNo")}>ทะเบียน</Th>
+            <Th onClick={() => onSort("Date")}>วันที่</Th>
+            <Th onClick={() => onSort("TotalMinutes")}>Engine-On</Th>
+            <Th>สำรองเวลาโหลด</Th>
+            <Th>ส่วนต่าง</Th>
+            <Th onClick={() => onSort("#trip")}>Trip</Th>
+            <Th onClick={() => onSort("จำนวนลิตร")}>Lite</Th>
+            <Th>Version</Th>
+            <Th center>Map</Th>
+          </tr>
+        </thead>
 
-      {/* 📊 Data table */}
-      <div className="rounded-md border bg-white overflow-hidden shadow-sm">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id}>
-                {hg.headers.map((h) => (
-                  <th
-                    key={h.id}
-                    className="border px-4 py-2 text-left cursor-pointer select-none text-gray-700"
-                    onClick={h.column.getToggleSortingHandler()}
+        <tbody>
+          {data.map((r) => (
+            <tr key={r._id} className="border-t hover:bg-gray-50">
+              <Td>{r.Supervisor || "-"}</Td>
+              <Td>{r.TruckPlateNo}</Td>
+              <Td>{formatDate(r.Date)}</Td>
+              <Td>{r.Duration_str}</Td>
+
+              {/* สำรองเวลาโหลด */}
+              <Td>
+                {r.สำรองเวลาโหลด != null ? (
+                  <span className="text-blue-600 font-medium">
+                    {r.สำรองเวลาโหลด.toFixed(0)} นาที
+                  </span>
+                ) : (
+                  <span className="text-gray-400">-</span>
+                )}
+              </Td>
+
+              {/* ส่วนต่าง_hhmm */}
+              <Td>
+                {r.ส่วนต่าง_hhmm ? (
+                  <span
+                    className={`font-semibold ${
+                      r.ส่วนต่าง > 0
+                        ? "text-red-600"
+                        : "text-gray-500"
+                    }`}
                   >
-                    {flexRender(h.column.columnDef.header, h.getContext())}
-                    {h.column.getIsSorted() === "asc"
-                      ? " 🔼"
-                      : h.column.getIsSorted() === "desc"
-                      ? " 🔽"
-                      : null}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50">
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="border px-4 py-2">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            {paginatedData.length === 0 && (
-              <tr>
-                <td
-                  colSpan={columns.length}
-                  className="text-center py-6 text-gray-500"
+                    {r.ส่วนต่าง_hhmm}
+                    {r.ส่วนต่าง > 0 && " ⚠️"}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">-</span>
+                )}
+              </Td>
+
+              <Td>{r["#trip"]}</Td>
+
+              {/* จำนวนลิตร */}
+              <Td>
+                {r.จำนวนลิตร != null ? (
+                  <span
+                    className={`font-semibold ${
+                      r.จำนวนลิตร > 2
+                        ? "text-red-600"
+                        : "text-yellow-600"
+                    }`}
+                  >
+                    {r.จำนวนลิตร.toFixed(2)} L
+                    {r.จำนวนลิตร > 2 && " 🔥"}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">N/A</span>
+                )}
+              </Td>
+
+              <Td>{r.version_type}</Td>
+
+              <Td center>
+                <a
+                  href={`/engineon/${r._id}`}
+                  className="inline-flex w-9 h-9 items-center justify-center rounded-full bg-blue-50 hover:bg-blue-100"
                 >
-                  ไม่พบข้อมูล
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  🗺️
+                </a>
+              </Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-        {/* 📍 Footer Pagination */}
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm py-3 border-t bg-gray-50 px-4">
-          <span>
-            แสดง {paginatedData.length} จาก {total} รายการ
-          </span>
+      {/* Pagination */}
+      <div className="flex justify-between items-center p-4 border-t bg-gray-50 text-sm">
+        <span>
+          แสดง {(page - 1) * pageSize + 1}–
+          {Math.min(page * pageSize, total)} จาก {total}
+        </span>
 
-          <div className="flex items-center gap-3">
-            <label className="text-gray-600">แถวต่อหน้า:</label>
-            <select
-              className="border rounded px-2 py-1 bg-white"
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-            >
-              {[10, 25, 50, 100].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-              <option value={0}>ทั้งหมด</option>
-            </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            className="border rounded px-2 py-1"
+          >
+            {[10, 25, 50, 100].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
 
-            {/* 📄 Pagination controls */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={safePage <= 1 || pageSize === 0}
-                onClick={() => setPage(1)}
-              >
-                ⏮️ หน้าแรก
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={safePage <= 1 || pageSize === 0}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                ◀️ ก่อนหน้า
-              </Button>
-
-              <span className="text-gray-700 font-medium">
-                หน้า {safePage} / {totalPages}
-              </span>
-
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pageSize === 0 || safePage >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                ถัดไป ▶️
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pageSize === 0 || safePage >= totalPages}
-                onClick={() => setPage(totalPages)}
-              >
-                หน้าสุดท้าย ⏭️
-              </Button>
-            </div>
-          </div>
+          <Button size="sm" variant="outline" disabled={page === 1} onClick={() => onPageChange(1)}>⏮</Button>
+          <Button size="sm" variant="outline" disabled={page === 1} onClick={() => onPageChange(page - 1)}>◀</Button>
+          <span>{page} / {totalPages}</span>
+          <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>▶</Button>
+          <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => onPageChange(totalPages)}>⏭</Button>
         </div>
       </div>
     </div>
+  )
+}
+
+function Th({ children, onClick, center }: any) {
+  return (
+    <th
+      onClick={onClick}
+      className={`p-3 cursor-pointer select-none ${center ? "text-center" : "text-left"}`}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {onClick && <ArrowUpDown size={14} className="text-gray-400" />}
+      </div>
+    </th>
+  )
+}
+
+function Td({ children, center }: any) {
+  return (
+    <td className={`p-3 ${center ? "text-center" : ""}`}>
+      {children}
+    </td>
   )
 }

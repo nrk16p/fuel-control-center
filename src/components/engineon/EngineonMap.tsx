@@ -1,12 +1,22 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Circle,
+  useMap,
+} from "react-leaflet";
 import { useEffect } from "react";
 import "leaflet/dist/leaflet.css";
 import "leaflet-extra-markers/dist/css/leaflet.extra-markers.min.css";
 import "leaflet-extra-markers";
 import L from "leaflet";
 
+/* -------------------------------------------------
+   📦 Types
+------------------------------------------------- */
 export interface EventData {
   _id: string;
   lat?: number;
@@ -14,111 +24,213 @@ export interface EventData {
   สถานที่?: string;
   nearest_plant?: string | null;
   total_engine_on_min: number;
-  total_engine_on_hr?: number;
   event_id?: number;
 }
 
 interface Props {
   events: EventData[];
   activeId: string | null;
+  hoverId?: string | null;
   onSelect?: (id: string) => void;
 }
 
 /* -------------------------------------------------
-   🎨 Custom Marker Icons (Leaflet-Extra-Markers)
+   🎨 Marker Icons
 ------------------------------------------------- */
-const defaultIcon = L.ExtraMarkers.icon({
-  icon: "fa-truck", // Font Awesome icon
-  markerColor: "cyan", // red, blue, green, purple, yellow, orange, cyan, black, etc.
-  shape: "circle", // 'circle', 'square', 'star', 'penta'
-  prefix: "fa",
-});
 
+// ⭐ Active marker
 const activeIcon = L.ExtraMarkers.icon({
   icon: "fa-star",
-  markerColor: "orange",
+  markerColor: "blue",
   shape: "star",
   prefix: "fa",
 });
 
+// 👁 Hover marker
+const hoverIcon = L.ExtraMarkers.icon({
+  icon: "fa-eye",
+  markerColor: "purple",
+  shape: "circle",
+  prefix: "fa",
+});
+
+// 🔥 Engine-On level marker (RULE ใหม่)
+function getEngineOnIcon(min: number) {
+  // 🔴 หนัก > 60 นาที
+  if (min > 60) {
+    return L.ExtraMarkers.icon({
+      icon: "fa-fire",
+      markerColor: "red",
+      shape: "circle",
+      prefix: "fa",
+    });
+  }
+
+  // 🟠 กลาง 30–60 นาที
+  if (min >= 30) {
+    return L.ExtraMarkers.icon({
+      icon: "fa-exclamation",
+      markerColor: "orange",
+      shape: "circle",
+      prefix: "fa",
+    });
+  }
+
+  // 🟢 น้อย < 30 นาที
+  return L.ExtraMarkers.icon({
+    icon: "fa-truck",
+    markerColor: "green",
+    shape: "circle",
+    prefix: "fa",
+  });
+}
+
 /* -------------------------------------------------
    🗺️ Map Component
 ------------------------------------------------- */
-export default function EngineonMap({ events, activeId, onSelect }: Props) {
+export default function EngineonMap({
+  events,
+  activeId,
+  hoverId,
+  onSelect,
+}: Props) {
   const validEvents = events.filter((e) => e.lat && e.lng);
 
-  if (validEvents.length === 0)
+  if (validEvents.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500 bg-gray-100">
         🗺️ No coordinates found
       </div>
     );
+  }
 
-  const selectedEvent = validEvents.find((e) => e._id === activeId) || validEvents[0];
-  const center: [number, number] = [selectedEvent.lat!, selectedEvent.lng!];
+  // ❌ ไม่มี active ตั้งต้น
+  const selectedEvent = activeId
+    ? validEvents.find((e) => e._id === activeId) ?? null
+    : null;
+
+  // center เริ่มต้น (ไม่ highlight)
+  const defaultCenter: [number, number] = [
+    validEvents[0].lat!,
+    validEvents[0].lng!,
+  ];
 
   return (
     <MapContainer
-      center={center}
+      center={defaultCenter}
       zoom={13}
       scrollWheelZoom
       className="h-full w-full rounded-lg"
-      key={activeId}
-      zoomControl={true}
+      zoomControl
     >
       {/* 🌍 Base Map */}
       <TileLayer
-        attribution='&copy; <a href="https://osm.org">OpenStreetMap</a> contributors'
+        attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
       {/* 📍 Markers */}
-      {validEvents.map((event) => (
-        <Marker
-          key={event._id}
-          position={[event.lat!, event.lng!]}
-          icon={event._id === activeId ? activeIcon : defaultIcon}
-          eventHandlers={{
-            click: () => onSelect?.(event._id),
-          }}
-        >
-          <Popup>
-            <div className="text-sm leading-snug">
-              <strong>#{event.event_id ?? "-"}</strong> <br />
-              📍 {event.nearest_plant ?? "-"} <br />
-              🏙️ {event.สถานที่ ?? "-"} <br />
-              ⏱️ {event.total_engine_on_min.toFixed(1)} นาที
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+      {validEvents.map((event) => {
+        const icon =
+          event._id === activeId
+            ? activeIcon
+            : event._id === hoverId
+            ? hoverIcon
+            : getEngineOnIcon(event.total_engine_on_min);
 
-      {/* 🔵 Highlight Circle */}
+        return (
+          <Marker
+            key={event._id}
+            position={[event.lat!, event.lng!]}
+            icon={icon}
+            eventHandlers={{
+              click: () => onSelect?.(event._id),
+            }}
+          >
+            <Popup>
+              <div className="text-sm leading-snug">
+                <strong>#{event.event_id ?? "-"}</strong>
+                <br />
+                📍 {event.nearest_plant ?? "-"}
+                <br />
+                🏙️ {event.สถานที่ ?? "-"}
+                <br />
+                ⏱️ {event.total_engine_on_min.toFixed(1)} นาที
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+
+      {/* 🔵 Active highlight */}
       {selectedEvent && (
-        <Circle
-          center={[selectedEvent.lat!, selectedEvent.lng!]}
-          radius={150}
-          pathOptions={{ color: "#2563eb", fillColor: "#3b82f6", fillOpacity: 0.2 }}
-        />
+        <>
+          <Circle
+            center={[selectedEvent.lat!, selectedEvent.lng!]}
+            radius={150}
+            pathOptions={{
+              color: "#2563eb",
+              fillColor: "#3b82f6",
+              fillOpacity: 0.2,
+            }}
+          />
+          <AutoFocus activeEvent={selectedEvent} />
+        </>
       )}
 
-      <AutoFocus activeEvent={selectedEvent} />
+      {/* 📊 Legend */}
+      <Legend />
     </MapContainer>
   );
 }
 
 /* -------------------------------------------------
-   👁️ AutoFocus — Smooth fly to marker
+   👁️ AutoFocus — fly to active
 ------------------------------------------------- */
 function AutoFocus({ activeEvent }: { activeEvent: EventData }) {
   const map = useMap();
+
   useEffect(() => {
-    if (activeEvent?.lat && activeEvent?.lng) {
-      map.flyTo([activeEvent.lat, activeEvent.lng], 14, {
-        animate: true,
-        duration: 0.8,
-      });
-    }
+    map.flyTo([activeEvent.lat!, activeEvent.lng!], 14, {
+      animate: true,
+      duration: 0.8,
+    });
   }, [activeEvent, map]);
+
+  return null;
+}
+
+/* -------------------------------------------------
+   📊 Legend Control
+------------------------------------------------- */
+function Legend() {
+  const map = useMap();
+
+  useEffect(() => {
+    const legend = L.control({ position: "bottomright" });
+
+    legend.onAdd = () => {
+      const div = L.DomUtil.create(
+        "div",
+        "bg-white p-3 rounded shadow text-xs leading-snug"
+      );
+
+      div.innerHTML = `
+        <div class="font-semibold mb-1">Engine-On Level</div>
+        <div>🟢 &lt; 30 นาที</div>
+        <div>🟠 30–60 นาที</div>
+        <div>🔴 &gt; 60 นาที 🔥</div>
+        <hr class="my-1" />
+        <div>⭐ Selected</div>
+        <div>👁 Hover</div>
+      `;
+
+      return div;
+    };
+
+    legend.addTo(map);
+    return () => legend.remove();
+  }, [map]);
+
   return null;
 }
