@@ -3,6 +3,7 @@
 import { Search, RotateCcw } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import React from "react"
 
 /* -----------------------------
    Thai Month / Year helpers
@@ -25,20 +26,33 @@ const THAI_MONTHS = [
 
 const toThaiYear = (year: number) => year + 543
 
+/* -----------------------------
+   Types
+------------------------------ */
+type AllOrNumber = number | "all"
+type AllOrString = string | "all"
+
 interface Props {
   search: string
   setSearch: (v: string) => void
-  version: string
-  setVersion: (v: string) => void
-  month: string | number
-  setMonth: (v: string | number) => void
-  year: string | number
-  setYear: (v: string | number) => void
+
+  version: AllOrString
+  setVersion: (v: AllOrString) => void
+
+  month: AllOrNumber
+  setMonth: (v: AllOrNumber) => void
+
+  year: AllOrNumber
+  setYear: (v: AllOrNumber) => void
+
   versionOptions: string[]
   yearOptions: number[] // ค.ศ.
   onReset: () => void
 }
 
+/* -----------------------------
+   Component
+------------------------------ */
 export function EngineOnFilters({
   search,
   setSearch,
@@ -54,7 +68,6 @@ export function EngineOnFilters({
 }: Props) {
   return (
     <div className="bg-white rounded-xl border shadow-sm p-4 flex flex-wrap gap-4 items-end">
-      
       {/* Search */}
       <div className="w-64">
         <label className="text-xs text-gray-500">ค้นหา</label>
@@ -65,7 +78,9 @@ export function EngineOnFilters({
           />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setSearch(e.target.value)
+            }
             placeholder="ทะเบียน / คนขับ"
             className="pl-8"
           />
@@ -73,7 +88,11 @@ export function EngineOnFilters({
       </div>
 
       {/* Version */}
-      <FilterSelect label="Version" value={version} onChange={setVersion}>
+      <FilterSelect
+        label="Version"
+        value={version}
+        onChange={(v) => setVersion(v === "all" ? "all" : v)}
+      >
         <option value="all">ทั้งหมด</option>
         {versionOptions.map((v) => (
           <option key={v} value={v}>
@@ -86,7 +105,9 @@ export function EngineOnFilters({
       <FilterSelect
         label="เดือน"
         value={month}
-        onChange={(v) => setMonth(v === "all" ? "all" : Number(v))}
+        onChange={(v) =>
+          setMonth(v === "all" ? "all" : Number(v))
+        }
       >
         <option value="all">ทุกเดือน</option>
         {THAI_MONTHS.slice(1).map((name, idx) => {
@@ -103,7 +124,9 @@ export function EngineOnFilters({
       <FilterSelect
         label="ปี"
         value={year}
-        onChange={(v) => setYear(v === "all" ? "all" : Number(v))}
+        onChange={(v) =>
+          setYear(v === "all" ? "all" : Number(v))
+        }
       >
         <option value="all">ทุกปี</option>
         {yearOptions.map((y) => (
@@ -126,20 +149,29 @@ export function EngineOnFilters({
 }
 
 /* -----------------------------
-   Reusable Select
+   Reusable Select (Typed)
 ------------------------------ */
+interface FilterSelectProps {
+  label: string
+  value: string | number
+  onChange: (v: string) => void
+  children: React.ReactNode
+}
+
 function FilterSelect({
   label,
   value,
   onChange,
   children,
-}: any) {
+}: FilterSelectProps) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs text-gray-500">{label}</label>
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+          onChange(e.target.value)
+        }
         className="border rounded px-3 py-2 bg-white"
       >
         {children}
