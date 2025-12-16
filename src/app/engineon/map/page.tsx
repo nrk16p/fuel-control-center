@@ -26,7 +26,7 @@ export default async function EngineonMapPage() {
       <EngineonMap
         events={data}
         activeId={null}
-        hoverId={null}   {/* ✅ เพิ่มบรรทัดนี้ */}
+        hoverId={null}  
       />
     </div>
   )
