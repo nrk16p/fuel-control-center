@@ -2,20 +2,23 @@
 
 import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { EngineTripSummary, SortKey } from "./types"
+import type { EngineTripSummary, SortKey } from "./types"
+import React from "react"
 
-interface Props {
-  data: EngineTripSummary[]
-  sortKey: SortKey
-  sortDir: "asc" | "desc"
-  onSort: (k: SortKey) => void
-  page: number
-  pageSize: number
-  total: number
-  totalPages: number
-  onPageChange: (p: number) => void
-  onPageSizeChange: (n: number) => void
+/* ================= Types ================= */
+
+interface ThProps {
+  children: React.ReactNode
+  onClick?: () => void
+  center?: boolean
 }
+
+interface TdProps {
+  children: React.ReactNode
+  center?: boolean
+}
+
+/* ================= Component ================= */
 
 export function EngineOnTable({
   data,
@@ -28,8 +31,18 @@ export function EngineOnTable({
   totalPages,
   onPageChange,
   onPageSizeChange,
-}: Props) {
-
+}: {
+  data: EngineTripSummary[]
+  sortKey: SortKey
+  sortDir: "asc" | "desc"
+  onSort: (k: SortKey) => void
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  onPageChange: (p: number) => void
+  onPageSizeChange: (n: number) => void
+}) {
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("th-TH")
 
@@ -61,47 +74,47 @@ export function EngineOnTable({
 
               {/* สำรองเวลาโหลด */}
               <Td>
-                {r.สำรองเวลาโหลด != null ? (
+                {r["สำรองเวลาโหลด"] != null ? (
                   <span className="text-blue-600 font-medium">
-                    {r.สำรองเวลาโหลด.toFixed(0)} นาที
+                    {r["สำรองเวลาโหลด"].toFixed(0)} นาที
                   </span>
                 ) : (
                   <span className="text-gray-400">-</span>
                 )}
               </Td>
 
-              {/* ส่วนต่าง_hhmm */}
+              {/* ส่วนต่าง */}
               <Td>
-                {r.ส่วนต่าง_hhmm ? (
+                {r["ส่วนต่าง_hhmm"] ? (
                   <span
                     className={`font-semibold ${
-                      r.ส่วนต่าง > 0
+                      r["ส่วนต่าง"] > 0
                         ? "text-red-600"
                         : "text-gray-500"
                     }`}
                   >
-                    {r.ส่วนต่าง_hhmm}
-                    {r.ส่วนต่าง > 0 && " ⚠️"}
+                    {r["ส่วนต่าง_hhmm"]}
+                    {r["ส่วนต่าง"] > 0 && " ⚠️"}
                   </span>
                 ) : (
                   <span className="text-gray-400">-</span>
                 )}
               </Td>
 
-              <Td>{r["#trip"]}</Td>
+              <Td>{r["#trip"] ?? "-"}</Td>
 
               {/* จำนวนลิตร */}
               <Td>
-                {r.จำนวนลิตร != null ? (
+                {r["จำนวนลิตร"] != null ? (
                   <span
                     className={`font-semibold ${
-                      r.จำนวนลิตร > 2
+                      r["จำนวนลิตร"] > 2
                         ? "text-red-600"
                         : "text-yellow-600"
                     }`}
                   >
-                    {r.จำนวนลิตร.toFixed(2)} L
-                    {r.จำนวนลิตร > 2 && " 🔥"}
+                    {r["จำนวนลิตร"].toFixed(2)} L
+                    {r["จำนวนลิตร"] > 2 && " 🔥"}
                   </span>
                 ) : (
                   <span className="text-gray-400">N/A</span>
@@ -133,11 +146,15 @@ export function EngineOnTable({
         <div className="flex items-center gap-2">
           <select
             value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              onPageSizeChange(Number(e.target.value))
+            }
             className="border rounded px-2 py-1"
           >
             {[10, 25, 50, 100].map((n) => (
-              <option key={n} value={n}>{n}</option>
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
           </select>
 
@@ -152,11 +169,15 @@ export function EngineOnTable({
   )
 }
 
-function Th({ children, onClick, center }: any) {
+/* ================= Helpers ================= */
+
+function Th({ children, onClick, center }: ThProps) {
   return (
     <th
       onClick={onClick}
-      className={`p-3 cursor-pointer select-none ${center ? "text-center" : "text-left"}`}
+      className={`p-3 select-none ${onClick ? "cursor-pointer" : ""} ${
+        center ? "text-center" : "text-left"
+      }`}
     >
       <div className="flex items-center gap-1">
         {children}
@@ -166,7 +187,7 @@ function Th({ children, onClick, center }: any) {
   )
 }
 
-function Td({ children, center }: any) {
+function Td({ children, center }: TdProps) {
   return (
     <td className={`p-3 ${center ? "text-center" : ""}`}>
       {children}
