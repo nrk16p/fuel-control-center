@@ -46,7 +46,7 @@ interface Job {
 interface QueuedJob {
   type: JobType
   name: string
-  run: () => Promise<{ job_id: string }>
+  run: () => Promise<{ job_id?: string }>
 }
 
 /* ---------------- Page ---------------- */
@@ -85,12 +85,16 @@ export default function PipelinePage() {
       try {
         const res = await next.run()
 
+        // ✅ normalize job_id (backend อาจไม่คืน)
+        const jobId =
+          res?.job_id ?? `${next.type}-${Date.now()}`
+
         setJobs((prev) =>
           prev.map((j) =>
             j.status === "queued" && j.type === next.type
               ? {
                   ...j,
-                  jobId: res.job_id,
+                  jobId,
                   status: "running",
                   startedAt: new Date().toISOString(),
                 }
@@ -116,52 +120,41 @@ export default function PipelinePage() {
     })()
   }, [queue, runningJob])
 
-  /* -------- Polling running job (FIXED) -------- */
+  /* -------- Polling running job -------- */
   useEffect(() => {
-    if (!runningJob) {
-      return () => {
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current)
-          pollingRef.current = null
-        }
-      }
-    }
+    if (!runningJob || !runningJob.jobId) return
 
     pollingRef.current = setInterval(async () => {
       let res: any
 
-      try {
-        switch (runningJob.type) {
-          case "engineon":
-            res = await engineOnStatus(runningJob.jobId!)
-            break
-          case "drivercost":
-            res = await driverCostStatus(runningJob.jobId!)
-            break
-          case "vehiclemaster":
-            res = await vehicleMasterStatus(runningJob.jobId!)
-            break
-          case "engineon-trip-summary":
-            res = await engineOnTripSummaryStatus(runningJob.jobId!)
-            break
-        }
+      switch (runningJob.type) {
+        case "engineon":
+          res = await engineOnStatus(runningJob.jobId)
+          break
+        case "drivercost":
+          res = await driverCostStatus(runningJob.jobId)
+          break
+        case "vehiclemaster":
+          res = await vehicleMasterStatus(runningJob.jobId)
+          break
+        case "engineon-trip-summary":
+          res = await engineOnTripSummaryStatus(runningJob.jobId)
+          break
+      }
 
-        if (res?.status === "success" || res?.status === "failed") {
-          setJobs((prev) =>
-            prev.map((j) =>
-              j.jobId === runningJob.jobId
-                ? {
-                    ...j,
-                    status: res.status,
-                    finishedAt: new Date().toISOString(),
-                    message: res.error,
-                  }
-                : j
-            )
+      if (res?.status === "success" || res?.status === "failed") {
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.jobId === runningJob.jobId
+              ? {
+                  ...j,
+                  status: res.status,
+                  finishedAt: new Date().toISOString(),
+                  message: res.error,
+                }
+              : j
           )
-        }
-      } catch (err) {
-        console.error("Polling error:", err)
+        )
       }
     }, 5000)
 
