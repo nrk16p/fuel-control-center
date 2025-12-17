@@ -11,7 +11,11 @@ interface Props {
   onQueue: (run: () => Promise<{ job_id?: string }>) => void
 }
 
-export default function RunEngineOnModal({ open, onClose, onQueue }: Props) {
+export default function RunEngineOnModal({
+  open,
+  onClose,
+  onQueue,
+}: Props) {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
@@ -21,16 +25,14 @@ export default function RunEngineOnModal({ open, onClose, onQueue }: Props) {
       return
     }
 
-    // ✅ modal สร้าง run fn แล้วส่งให้ page enqueue
+    // ✅ ส่งเฉพาะ field ที่ type รองรับ
     onQueue(() =>
       runEngineOn({
-        start_date: toDMY(startDate), // ✅ dd/mm/yyyy
-        end_date: toDMY(endDate),     // ✅ dd/mm/yyyy
+        start_date: toDMY(startDate), // dd/mm/yyyy
+        end_date: toDMY(endDate),     // dd/mm/yyyy
         max_distance: 200,
         save_raw: true,
         save_summary: true,
-        parallel_dates: false,
-        max_workers: 4,
       })
     )
 
