@@ -116,45 +116,61 @@ export default function PipelinePage() {
     })()
   }, [queue, runningJob])
 
-  /* -------- Polling running job -------- */
+  /* -------- Polling running job (FIXED) -------- */
   useEffect(() => {
-    if (!runningJob) return
+    if (!runningJob) {
+      return () => {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current)
+          pollingRef.current = null
+        }
+      }
+    }
 
     pollingRef.current = setInterval(async () => {
       let res: any
 
-      switch (runningJob.type) {
-        case "engineon":
-          res = await engineOnStatus(runningJob.jobId!)
-          break
-        case "drivercost":
-          res = await driverCostStatus(runningJob.jobId!)
-          break
-        case "vehiclemaster":
-          res = await vehicleMasterStatus(runningJob.jobId!)
-          break
-        case "engineon-trip-summary":
-          res = await engineOnTripSummaryStatus(runningJob.jobId!)
-          break
-      }
+      try {
+        switch (runningJob.type) {
+          case "engineon":
+            res = await engineOnStatus(runningJob.jobId!)
+            break
+          case "drivercost":
+            res = await driverCostStatus(runningJob.jobId!)
+            break
+          case "vehiclemaster":
+            res = await vehicleMasterStatus(runningJob.jobId!)
+            break
+          case "engineon-trip-summary":
+            res = await engineOnTripSummaryStatus(runningJob.jobId!)
+            break
+        }
 
-      if (res?.status === "success" || res?.status === "failed") {
-        setJobs((prev) =>
-          prev.map((j) =>
-            j.jobId === runningJob.jobId
-              ? {
-                  ...j,
-                  status: res.status,
-                  finishedAt: new Date().toISOString(),
-                  message: res.error,
-                }
-              : j
+        if (res?.status === "success" || res?.status === "failed") {
+          setJobs((prev) =>
+            prev.map((j) =>
+              j.jobId === runningJob.jobId
+                ? {
+                    ...j,
+                    status: res.status,
+                    finishedAt: new Date().toISOString(),
+                    message: res.error,
+                  }
+                : j
+            )
           )
-        )
+        }
+      } catch (err) {
+        console.error("Polling error:", err)
       }
     }, 5000)
 
-    return () => pollingRef.current && clearInterval(pollingRef.current)
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+    }
   }, [runningJob])
 
   /* -------- Enqueue helper -------- */
@@ -183,18 +199,24 @@ export default function PipelinePage() {
         </p>
       </header>
 
-      {/* Health */}
-      <section className="bg-white border rounded-xl p-4 shadow-sm">
-        Health:{" "}
-        <span
-          className={
-            health?.status === "ok"
-              ? "text-green-600"
-              : "text-red-600"
-          }
-        >
-          {health?.status ?? "unknown"}
-        </span>
+      {/* Health + ETL Jobs */}
+      <section className="bg-white border rounded-xl p-4 shadow-sm flex items-center justify-between">
+        <div>
+          Health:{" "}
+          <span
+            className={
+              health?.status === "ok"
+                ? "text-green-600"
+                : "text-red-600"
+            }
+          >
+            {health?.status ?? "unknown"}
+          </span>
+        </div>
+
+        <Button variant="outline" onClick={() => setOpenEtlJobs(true)}>
+          📄 View ETL Jobs
+        </Button>
       </section>
 
       {/* Actions */}
@@ -203,13 +225,6 @@ export default function PipelinePage() {
         <Button onClick={() => setOpenDriverCost(true)}>💰 Driver Cost</Button>
         <Button onClick={() => setOpenVehicleMaster(true)}>🚚 Vehicle Master</Button>
         <Button onClick={() => setOpenTripSummary(true)}>📊 Trip Summary</Button>
-      </section>
-
-      {/* View ETL Jobs */}
-      <section className="flex justify-end">
-        <Button variant="outline" onClick={() => setOpenEtlJobs(true)}>
-          📄 View ETL Jobs
-        </Button>
       </section>
 
       {/* Timeline */}
