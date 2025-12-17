@@ -7,32 +7,15 @@ import { runEngineOnTripSummary } from "@/lib/etlApi"
 interface Props {
   open: boolean
   onClose: () => void
-  // ✅ ส่ง function กลับไป
-  onRun: (run: () => Promise<{ job_id: string }>) => void
+  onQueue: (run: () => Promise<{ job_id?: string }>) => void
 }
 
-export default function RunTripSummaryModal({
-  open,
-  onClose,
-  onRun,
-}: Props) {
+export default function RunTripSummaryModal({ open, onClose, onQueue }: Props) {
   const [year, setYear] = useState(2025)
   const [month, setMonth] = useState(12)
 
-  const handleConfirm = () => {
-    if (!year || !month) {
-      alert("❗ Please select year and month")
-      return
-    }
-
-    // ✅ ส่ง function ให้ Page (ยังไม่ run)
-    onRun(() =>
-      runEngineOnTripSummary({
-        year,
-        month,
-      })
-    )
-
+  const handleQueue = () => {
+    onQueue(() => runEngineOnTripSummary({ year, month }))
     onClose()
   }
 
@@ -41,14 +24,12 @@ export default function RunTripSummaryModal({
       open={open}
       title="📊 Run Engine-On Trip Summary"
       onClose={onClose}
-      onRun={handleConfirm}
+      onRun={handleQueue}
+      loading={false}
     >
-      <div className="space-y-4">
-        {/* Year */}
+      <div className="space-y-3">
         <div>
-          <label className="text-sm font-medium text-gray-700">
-            Year
-          </label>
+          <label className="text-sm font-medium">Year</label>
           <input
             type="number"
             value={year}
@@ -57,11 +38,8 @@ export default function RunTripSummaryModal({
           />
         </div>
 
-        {/* Month */}
         <div>
-          <label className="text-sm font-medium text-gray-700">
-            Month
-          </label>
+          <label className="text-sm font-medium">Month</label>
           <select
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}

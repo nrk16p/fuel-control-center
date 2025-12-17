@@ -8,28 +8,24 @@ import { toDMY } from "@/lib/date"
 interface Props {
   open: boolean
   onClose: () => void
-  onRun: (run: () => Promise<{ job_id: string }>) => void
+  onQueue: (run: () => Promise<{ job_id?: string }>) => void
 }
 
-export default function RunEngineOnModal({
-  open,
-  onClose,
-  onRun,
-}: Props) {
+export default function RunEngineOnModal({ open, onClose, onQueue }: Props) {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
-  const handleConfirm = () => {
+  const handleQueue = () => {
     if (!startDate || !endDate) {
       alert("❗ Please select start & end date")
       return
     }
 
-    // ✅ ส่ง function ให้ Page (ยังไม่ run)
-    onRun(() =>
+    // ✅ modal สร้าง run fn แล้วส่งให้ page enqueue
+    onQueue(() =>
       runEngineOn({
-        start_date: toDMY(startDate),
-        end_date: toDMY(endDate),
+        start_date: toDMY(startDate), // ✅ dd/mm/yyyy
+        end_date: toDMY(endDate),     // ✅ dd/mm/yyyy
         max_distance: 200,
         save_raw: true,
         save_summary: true,
@@ -45,8 +41,9 @@ export default function RunEngineOnModal({
     <BaseRunModal
       open={open}
       title="🔥 Run Engine-On ETL"
+      loading={false}
       onClose={onClose}
-      onRun={handleConfirm}
+      onRun={handleQueue}
     >
       <div className="space-y-3">
         <div>
