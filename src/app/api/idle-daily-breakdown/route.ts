@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const col = db.collection("engineon_trip_summary")
 
     // -------------------------------
-    // Match filters (SAFE)
+    // Match filters
     // -------------------------------
     const match: any = {}
     if (!Number.isNaN(year)) match.year = year
@@ -33,14 +33,14 @@ export async function GET(request: Request) {
     if (supervisor) match["Supervisor"] = supervisor
 
     // -------------------------------
-    // Aggregation
+    // Aggregation Pipeline
     // -------------------------------
     const data = await col
       .aggregate([
         // 1️⃣ Apply filters
         { $match: match },
 
-        // 2️⃣ Normalize date to day (Truck × Day grain)
+        // 2️⃣ Normalize date → Day level
         {
           $addFields: {
             day: {
@@ -53,46 +53,46 @@ export async function GET(request: Request) {
           },
         },
 
-        // 3️⃣ Clean "ส่วนต่าง"
-        // - null → null
-        // - NaN → null
-        {
-          $addFields: {
-            diff_clean: {
-              $cond: [
-                {
-                  $or: [
-                    { $eq: ["$ส่วนต่าง", null] },
-                    { $ne: ["$ส่วนต่าง", "$ส่วนต่าง"] }, // NaN check
-                  ],
-                },
-                null,
-                "$ส่วนต่าง",
-              ],
-            },
-          },
-        },
-
-        // 4️⃣ SLA classification (BUSINESS LOGIC)
+        // 3️⃣ SLA classification (ROBUST)
         {
           $addFields: {
             sla_status: {
-              $cond: [
-                { $gt: ["$diff_clean", 0] },
-                "over_sla",
-                {
-                  $cond: [
-                    { $eq: ["$diff_clean", null] },
-                    "no_data",
-                    "within_sla",
-                  ],
-                },
-              ],
+              $switch: {
+                branches: [
+                  // 🔹 Case 1: NOT a number → no_data
+                  {
+                    case: {
+                      $not: {
+                        $in: [
+                          { $type: "$ส่วนต่าง" },
+                          ["double", "int", "long", "decimal"],
+                        ],
+                      },
+                    },
+                    then: "no_data",
+                  },
+
+                  // 🔹 Case 2: NaN (numeric but invalid)
+                  {
+                    case: { $ne: ["$ส่วนต่าง", "$ส่วนต่าง"] },
+                    then: "no_data",
+                  },
+
+                  // 🔹 Case 3: Over SLA
+                  {
+                    case: { $gt: ["$ส่วนต่าง", 0] },
+                    then: "over_sla",
+                  },
+                ],
+
+                // 🔹 Case 4: Numeric ≤ 0
+                default: "within_sla",
+              },
             },
           },
         },
 
-        // 5️⃣ Count trucks per day per status
+        // 4️⃣ Count trucks per day per SLA status
         {
           $group: {
             _id: {
@@ -103,7 +103,7 @@ export async function GET(request: Request) {
           },
         },
 
-        // 6️⃣ Reshape → one row per day
+        // 5️⃣ Reshape → one row per day
         {
           $group: {
             _id: "$_id.day",
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
           },
         },
 
-        // 7️⃣ Pivot breakdown → columns
+        // 6️⃣ Pivot SLA status → columns
         {
           $project: {
             _id: 0,
@@ -174,7 +174,7 @@ export async function GET(request: Request) {
           },
         },
 
-        // 8️⃣ Sort by day
+        // 7️⃣ Sort by day
         { $sort: { day: 1 } },
       ])
       .toArray()

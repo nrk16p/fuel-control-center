@@ -7,11 +7,17 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from "recharts"
-import { Card, CardContent } from "@/components/ui/card"
+
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from "@/components/ui/chart"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 
 /* -------------------------------------------------
@@ -23,6 +29,24 @@ interface DailyIdle {
   over_sla: number
   within_sla: number
   no_data: number
+}
+
+/* -------------------------------------------------
+   Chart Config (SHADCN)
+------------------------------------------------- */
+const chartConfig = {
+  over_sla: {
+    label: "Over SLA",
+    color: "hsl(var(--destructive))",
+  },
+  within_sla: {
+    label: "Within SLA",
+    color: "hsl(var(--success, 142 76% 36%))",
+  },
+  no_data: {
+    label: "No Data",
+    color: "hsl(var(--muted-foreground))",
+  },
 }
 
 /* -------------------------------------------------
@@ -71,19 +95,18 @@ export default function IdleDailyPage() {
   /* ---------------- UI States ---------------- */
   if (loading)
     return (
-      <div className="flex h-[70vh] items-center justify-center text-gray-500">
+      <div className="flex h-[70vh] items-center justify-center text-muted-foreground">
         <Loader2 className="animate-spin mr-2" /> Loading dashboard...
       </div>
     )
 
   if (!data.length)
     return (
-      <div className="flex h-[70vh] items-center justify-center text-gray-400">
+      <div className="flex h-[70vh] items-center justify-center text-muted-foreground">
         No data available
       </div>
     )
 
-  /* ---------------- Derived (Latest Day KPI) ---------------- */
   const latest = data[data.length - 1]
 
   /* -------------------------------------------------
@@ -95,7 +118,7 @@ export default function IdleDailyPage() {
         🚛 Daily Truck Idle SLA Breakdown
       </h1>
 
-      <p className="text-gray-500">
+      <p className="text-muted-foreground">
         Breakdown of trucks per day by SLA status
       </p>
 
@@ -123,99 +146,75 @@ export default function IdleDailyPage() {
         </CardContent>
       </Card>
 
-      {/* ---------------- KPI (LATEST DAY) ---------------- */}
+      {/* ---------------- KPI ---------------- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500">Total Trucks</p>
-            <p className="text-2xl font-bold">
-              {latest.total_trucks}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500 text-red-600">
-              Over SLA
-            </p>
-            <p className="text-2xl font-bold text-red-600">
-              {latest.over_sla}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500 text-green-600">
-              Within SLA
-            </p>
-            <p className="text-2xl font-bold text-green-600">
-              {latest.within_sla}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500">
-              No Data
-            </p>
-            <p className="text-2xl font-bold text-gray-500">
-              {latest.no_data}
-            </p>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Total Trucks", value: latest.total_trucks },
+          { label: "Over SLA", value: latest.over_sla, color: "text-destructive" },
+          { label: "Within SLA", value: latest.within_sla, color: "text-green-600" },
+          { label: "No Data", value: latest.no_data, color: "text-muted-foreground" },
+        ].map((kpi) => (
+          <Card key={kpi.label}>
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">
+                {kpi.label}
+              </p>
+              <p className={`text-2xl font-bold ${kpi.color ?? ""}`}>
+                {kpi.value}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* ---------------- STACKED BAR CHART ---------------- */}
+      {/* ---------------- SHADCN BAR CHART ---------------- */}
       <Card>
-        <CardContent className="p-6">
-          <h2 className="font-semibold mb-4">
-            📊 Truck SLA Status by Day
-          </h2>
-
-          <ResponsiveContainer width="100%" height={380}>
+        <CardHeader>
+          <CardTitle>📊 Truck SLA Status by Day</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={chartConfig} className="h-[380px]">
             <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" />
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="day"
+                tickLine={false}
+                axisLine={false}
+              />
               <YAxis />
-              <Tooltip />
-              <Legend />
+
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartLegend content={<ChartLegendContent />} />
+
               <Bar
                 dataKey="over_sla"
                 stackId="a"
-                fill="#dc2626"
-                name="Over SLA"
+                fill="var(--color-over_sla)"
               />
               <Bar
                 dataKey="within_sla"
                 stackId="a"
-                fill="#16a34a"
-                name="Within SLA"
+                fill="var(--color-within_sla)"
               />
               <Bar
                 dataKey="no_data"
                 stackId="a"
-                fill="#9ca3af"
-                name="No Data"
+                fill="var(--color-no_data)"
               />
             </BarChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         </CardContent>
       </Card>
 
       {/* ---------------- TABLE ---------------- */}
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm border rounded">
-          <thead className="bg-gray-100">
+          <thead className="bg-muted">
             <tr>
               <th className="p-2 text-left">Day</th>
               <th className="p-2 text-right">Total</th>
-              <th className="p-2 text-right text-red-600">Over SLA</th>
-              <th className="p-2 text-right text-green-600">
-                Within SLA
-              </th>
+              <th className="p-2 text-right text-destructive">Over SLA</th>
+              <th className="p-2 text-right text-green-600">Within SLA</th>
               <th className="p-2 text-right">No Data</th>
             </tr>
           </thead>
@@ -223,18 +222,10 @@ export default function IdleDailyPage() {
             {data.map((d) => (
               <tr key={d.day} className="border-t">
                 <td className="p-2">{d.day}</td>
-                <td className="p-2 text-right">
-                  {d.total_trucks}
-                </td>
-                <td className="p-2 text-right text-red-600">
-                  {d.over_sla}
-                </td>
-                <td className="p-2 text-right text-green-600">
-                  {d.within_sla}
-                </td>
-                <td className="p-2 text-right">
-                  {d.no_data}
-                </td>
+                <td className="p-2 text-right">{d.total_trucks}</td>
+                <td className="p-2 text-right text-destructive">{d.over_sla}</td>
+                <td className="p-2 text-right text-green-600">{d.within_sla}</td>
+                <td className="p-2 text-right">{d.no_data}</td>
               </tr>
             ))}
           </tbody>
