@@ -5,32 +5,21 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
 
-    /* ---------------- Query params ---------------- */
     const year = Number(searchParams.get("year"))
     const month = Number(searchParams.get("month"))
 
-    const fleet = searchParams.get("fleet")
-    const plant = searchParams.get("plant")
-    const supervisor = searchParams.get("supervisor")
-
-    /* ---------------- Mongo ---------------- */
     const client = await clientPromise
     const db = client.db("analytics")
     const col = db.collection("engineon_trip_summary")
 
-    /* ---------------- Filters ---------------- */
     const match: any = {}
     if (!Number.isNaN(year)) match.year = year
     if (!Number.isNaN(month)) match.month = month
-    if (fleet) match["ฟลีท"] = fleet
-    if (plant) match["แพล้นท์"] = plant
-    if (supervisor) match["Supervisor"] = supervisor
 
-    /* ---------------- Aggregation ---------------- */
     const data = await col.aggregate([
       { $match: match },
 
-      /* 1️⃣ Normalize day */
+      // 1️⃣ Day level
       {
         $addFields: {
           day: {
@@ -43,37 +32,30 @@ export async function GET(request: Request) {
         },
       },
 
-      /* 2️⃣ Normalize ส่วนต่าง → diff_clean
-         - NaN → null
-         - non-number → null
-      */
+      // 2️⃣ SAFE normalize ส่วนต่าง
       {
         $addFields: {
-          diff_clean: {
-            $cond: [
-              {
-                $or: [
-                  { $eq: ["$ส่วนต่าง", null] },
-                  { $ne: ["$ส่วนต่าง", "$ส่วนต่าง"] }, // NaN trick (MongoDB 4.x safe)
-                ],
-              },
-              null,
-              "$ส่วนต่าง",
-            ],
+          diff_num: {
+            $convert: {
+              input: "$ส่วนต่าง",
+              to: "double",
+              onError: null,
+              onNull: null,
+            },
           },
         },
       },
 
-      /* 3️⃣ SLA classification */
+      // 3️⃣ SLA classification (100% reliable)
       {
         $addFields: {
           sla_status: {
             $cond: [
-              { $eq: ["$diff_clean", null] },
+              { $eq: ["$diff_num", null] },
               "no_data",
               {
                 $cond: [
-                  { $gt: ["$diff_clean", 0] },
+                  { $gt: ["$diff_num", 0] },
                   "over_sla",
                   "within_sla",
                 ],
@@ -83,7 +65,7 @@ export async function GET(request: Request) {
         },
       },
 
-      /* 4️⃣ Count per day */
+      // 4️⃣ Count
       {
         $group: {
           _id: { day: "$day", status: "$sla_status" },
@@ -91,7 +73,7 @@ export async function GET(request: Request) {
         },
       },
 
-      /* 5️⃣ Pivot */
+      // 5️⃣ Pivot
       {
         $group: {
           _id: "$_id.day",
@@ -110,7 +92,6 @@ export async function GET(request: Request) {
           _id: 0,
           day: "$_id",
           total_trucks: 1,
-
           over_sla: {
             $sum: {
               $map: {
@@ -126,7 +107,6 @@ export async function GET(request: Request) {
               },
             },
           },
-
           within_sla: {
             $sum: {
               $map: {
@@ -142,7 +122,6 @@ export async function GET(request: Request) {
               },
             },
           },
-
           no_data: {
             $sum: {
               $map: {
