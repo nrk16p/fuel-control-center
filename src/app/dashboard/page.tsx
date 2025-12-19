@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -13,65 +13,32 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 
-interface ProblemEvent {
-  _id: string
-  plate: string
+interface DailyIdle {
   date: string
-  start_time: string
-  end_time: string
-  total_engine_on_min: number
-  lat?: number
-  lng?: number
-  nearest_plant?: string
-  location?: string
+  problem_cases: number
+  supervisor_count: number
+  truck_count: number
 }
 
-export default function EngineonProblemPage() {
-  const [data, setData] = useState<ProblemEvent[]>([])
+export default function SupervisorIdleDailyPage() {
+  const [data, setData] = useState<DailyIdle[]>([])
   const [loading, setLoading] = useState(true)
-
-  /* ---------------- Filters ---------------- */
-  const [minMinutes, setMinMinutes] = useState(30)
-  const [plate, setPlate] = useState("")
-  const [date, setDate] = useState("")
 
   useEffect(() => {
     const load = async () => {
-      const params = new URLSearchParams()
-      params.set("min_minutes", String(minMinutes))
-      if (plate) params.set("plate", plate)
-      if (date) params.set("date", date)
-
-      const res = await fetch(`/api/engineon-problem?${params}`)
+      const res = await fetch(
+        "/api/supervisor-idle-daily?year=2025&month=12"
+      )
       const json = await res.json()
       setData(json)
       setLoading(false)
     }
     load()
-  }, [minMinutes, plate, date])
-
-  /* ---------------- Group by Vehicle ---------------- */
-  const byVehicle = useMemo(() => {
-    const map: any = {}
-    data.forEach((d) => {
-      if (!map[d.plate]) {
-        map[d.plate] = {
-          plate: d.plate,
-          total_min: 0,
-          count: 0,
-        }
-      }
-      map[d.plate].total_min += d.total_engine_on_min
-      map[d.plate].count += 1
-    })
-    return Object.values(map).sort(
-      (a: any, b: any) => b.total_min - a.total_min
-    )
-  }, [data])
+  }, [])
 
   if (loading)
     return (
-      <div className="flex h-[80vh] items-center justify-center">
+      <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="animate-spin mr-2" /> Loading…
       </div>
     )
@@ -79,84 +46,51 @@ export default function EngineonProblemPage() {
   return (
     <main className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">
-        🚨 Long Engine-On Problem Dashboard
+        📅 Daily Supervisor Idle Problem
       </h1>
 
-      {/* ---------------- FILTER ---------------- */}
       <Card>
-        <CardContent className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="text-sm">Min Minutes</label>
-            <input
-              type="number"
-              className="border rounded px-2 py-1 w-full"
-              value={minMinutes}
-              onChange={(e) => setMinMinutes(Number(e.target.value))}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm">Plate</label>
-            <input
-              className="border rounded px-2 py-1 w-full"
-              placeholder="72-9473"
-              value={plate}
-              onChange={(e) => setPlate(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm">Date (DD/MM/YYYY)</label>
-            <input
-              className="border rounded px-2 py-1 w-full"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ---------------- WHICH CAR ---------------- */}
-      <Card>
-        <CardContent className="p-4">
-          <h2 className="font-semibold mb-2">
-            🚛 Vehicles with Long Engine-On
-          </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={byVehicle.slice(0, 10)}>
+        <CardContent className="p-6">
+          <ResponsiveContainer width="100%" height={320}>
+            <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="plate" />
+              <XAxis dataKey="date" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="total_min" fill="#dc2626" />
-            </BarChart>
+              <Line
+                dataKey="problem_cases"
+                stroke="#dc2626"
+                strokeWidth={2}
+                name="Supervisor×Truck (Idle > SLA)"
+              />
+            </LineChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* ---------------- EVENT TABLE ---------------- */}
+      {/* KPI Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full border text-sm">
           <thead className="bg-gray-100">
             <tr>
-              <th className="p-2">Plate</th>
               <th className="p-2">Date</th>
-              <th className="p-2">Minutes</th>
-              <th className="p-2">Plant</th>
-              <th className="p-2">Location</th>
+              <th className="p-2 text-right">Problem Cases</th>
+              <th className="p-2 text-right">Supervisors</th>
+              <th className="p-2 text-right">Trucks</th>
             </tr>
           </thead>
           <tbody>
-            {data.slice(0, 50).map((d) => (
-              <tr key={d._id} className="border-t">
-                <td className="p-2 font-medium">{d.plate}</td>
+            {data.map((d) => (
+              <tr key={d.date} className="border-t">
                 <td className="p-2">{d.date}</td>
                 <td className="p-2 text-right text-red-600">
-                  {d.total_engine_on_min.toFixed(1)}
+                  {d.problem_cases}
                 </td>
-                <td className="p-2">{d.nearest_plant ?? "-"}</td>
-                <td className="p-2 truncate max-w-md">
-                  {d.location ?? "-"}
+                <td className="p-2 text-right">
+                  {d.supervisor_count}
+                </td>
+                <td className="p-2 text-right">
+                  {d.truck_count}
                 </td>
               </tr>
             ))}
