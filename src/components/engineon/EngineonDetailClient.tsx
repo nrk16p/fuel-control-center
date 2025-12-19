@@ -38,6 +38,16 @@ export interface RawEngineonData {
   nearest_plant?: string | null
 }
 
+/* 👇 Type ที่ Map ต้องการ (STRICT) */
+export interface EventData {
+  _id: string
+  lat: number
+  lng: number
+  total_engine_on_min: number
+  start_time?: string
+  end_time?: string
+}
+
 /* -------------------------------------------------
    🔐 Helpers (SAFE)
 ------------------------------------------------- */
@@ -69,7 +79,7 @@ export default function EngineonDetailClient({
 }: {
   events: RawEngineonData[]
 }) {
-  /* ───── Guard: no data ───── */
+  /* ───── Guard ───── */
   if (!events || events.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen text-gray-500">
@@ -78,53 +88,67 @@ export default function EngineonDetailClient({
     )
   }
 
-  const [plantFilter, setPlantFilter] = useState<string>("all")
+  const [plantFilter, setPlantFilter] = useState("all")
   const [selected, setSelected] = useState<RawEngineonData>(events[0])
   const [hoverId, setHoverId] = useState<string | null>(null)
 
-  /* 🌱 Unique plant list */
+  /* 🌱 Plant list */
   const plants = useMemo(() => {
-    const unique = new Set(events.map(e => e.nearest_plant ?? "Unknown"))
-    return ["all", ...Array.from(unique)]
+    const s = new Set(events.map(e => e.nearest_plant ?? "Unknown"))
+    return ["all", ...Array.from(s)]
   }, [events])
 
-  /* 🔍 Filtered events */
+  /* 🔍 Filtered events (RAW) */
   const filteredEvents = useMemo(() => {
     if (plantFilter === "all") return events
     return events.filter(e => e.nearest_plant === plantFilter)
   }, [events, plantFilter])
 
-  /* 🔄 Keep selected valid */
+  /* 🔄 keep selected valid */
   useEffect(() => {
-    const valid = filteredEvents.find(e => e._id === selected?._id)
-    if (!valid && filteredEvents.length > 0) {
+    const ok = filteredEvents.find(e => e._id === selected?._id)
+    if (!ok && filteredEvents.length > 0) {
       setSelected(filteredEvents[0])
     }
   }, [filteredEvents, selected])
 
-  /* 📊 Summary badge */
+  /* 📊 Summary */
   const summary = useMemo(() => {
-    let red = 0
-    let orange = 0
-    let green = 0
-
+    let red = 0, orange = 0, green = 0
     filteredEvents.forEach(e => {
       const min = Number(e.total_engine_on_min ?? 0)
       if (min > 60) red++
       else if (min >= 30) orange++
       else green++
     })
-
     return { red, orange, green }
+  }, [filteredEvents])
+
+  /* 🗺️ MAP EVENTS (NORMALIZED) */
+  const mapEvents = useMemo<EventData[]>(() => {
+    return filteredEvents
+      .filter(
+        e =>
+          typeof e.lat === "number" &&
+          typeof e.lng === "number"
+      )
+      .map(e => ({
+        _id: e._id,
+        lat: e.lat as number,
+        lng: e.lng as number,
+        total_engine_on_min: Number(e.total_engine_on_min ?? 0),
+        start_time: e.start_time,
+        end_time: e.end_time,
+      }))
   }, [filteredEvents])
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* ───────────────── Sidebar ───────────────── */}
-      <aside className="w-full md:w-[38%] lg:w-[30%] xl:w-[28%] bg-white border-r shadow-sm overflow-y-auto p-6 space-y-6">
+      {/* ───────────── Sidebar ───────────── */}
+      <aside className="w-full md:w-[38%] lg:w-[30%] xl:w-[28%] bg-white border-r overflow-y-auto p-6 space-y-6">
         {/* Header */}
         <header className="sticky top-0 bg-white pb-2 border-b z-10">
-          <h1 className="text-xl font-bold mb-1 flex items-center gap-2">
+          <h1 className="text-xl font-bold flex gap-2">
             Engine-On Details <Badge variant="secondary">v2</Badge>
           </h1>
 
@@ -133,11 +157,6 @@ export default function EngineonDetailClient({
             <span className="font-semibold text-blue-600">
               {selected.ทะเบียนพาหนะ ?? "-"}
             </span>
-          </p>
-
-          <p className="text-xs text-gray-400">
-            Showing {filteredEvents.length} event
-            {filteredEvents.length !== 1 && "s"}
           </p>
 
           <div className="flex gap-2 mt-2">
@@ -153,12 +172,10 @@ export default function EngineonDetailClient({
 
         {/* Filter */}
         <section>
-          <label className="text-xs font-semibold text-gray-600">
-            Filter by Nearest Plant
-          </label>
+          <label className="text-xs font-semibold">Nearest Plant</label>
           <Select value={plantFilter} onValueChange={setPlantFilter}>
-            <SelectTrigger className="w-full mt-1 text-sm">
-              <SelectValue placeholder="Select a plant" />
+            <SelectTrigger className="mt-1">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {plants.map(p => (
@@ -170,21 +187,14 @@ export default function EngineonDetailClient({
           </Select>
         </section>
 
-        {/* Detail Info */}
+        {/* Detail */}
         <section className="space-y-3 text-sm border-b pb-4">
           <Info label="วันที่" value={safeDate(selected.date)} />
           <Info label="Records" value={selected.count_records ?? 0} />
           <Info label="Engine-On (ชม.)" value={fmt(selected.total_engine_on_hr)} />
           <Info label="Engine-On (นาที)" value={fmt(selected.total_engine_on_min)} />
-          <Info
-            label="Start Time"
-            value={safeDate(selected.start_time, "DD/MM/YYYY HH:mm:ss")}
-          />
-          <Info
-            label="End Time"
-            value={safeDate(selected.end_time, "DD/MM/YYYY HH:mm:ss")}
-          />
-          <Info label="สถานที่" value={selected.สถานที่ ?? "-"} />
+          <Info label="Start" value={safeDate(selected.start_time, "HH:mm:ss")} />
+          <Info label="End" value={safeDate(selected.end_time, "HH:mm:ss")} />
           <Info label="Nearest Plant" value={selected.nearest_plant ?? "-"} />
 
           <div className="flex gap-2">
@@ -193,59 +203,39 @@ export default function EngineonDetailClient({
           </div>
         </section>
 
-        {/* Back */}
-        <a
-          href="/engineon"
-          className="inline-flex items-center justify-center w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
-          ← Back to Table
-        </a>
-
-        {/* All Events */}
-        <section className="pt-4">
-          <p className="text-xs font-semibold mb-2">All Events</p>
-          <ul className="space-y-1">
-            {filteredEvents.map(ev => (
-              <li
-                key={ev._id}
-                onClick={() => setSelected(ev)}
-                onMouseEnter={() => setHoverId(ev._id)}
-                onMouseLeave={() => setHoverId(null)}
-                className={`cursor-pointer text-xs px-2 py-2 rounded ${
-                  ev._id === selected._id
-                    ? "bg-blue-100 text-blue-700 font-semibold"
-                    : "hover:bg-gray-50"
-                }`}
-              >
-                <div className="flex justify-between">
-                  <span>#{ev.event_id ?? "–"}</span>
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] ${
-                      engineOnColor(ev.total_engine_on_min)
-                    }`}
-                  >
-                    {ev.nearest_plant ?? "-"}
-                  </Badge>
-                </div>
-
-                <div className={engineOnColor(ev.total_engine_on_min)}>
-                  {safeDate(ev.start_time, "HH:mm:ss")} →{" "}
-                  {safeDate(ev.end_time, "HH:mm:ss")} (
+        {/* Events */}
+        <ul className="space-y-1">
+          {filteredEvents.map(ev => (
+            <li
+              key={ev._id}
+              onClick={() => setSelected(ev)}
+              onMouseEnter={() => setHoverId(ev._id)}
+              onMouseLeave={() => setHoverId(null)}
+              className={`cursor-pointer text-xs p-2 rounded ${
+                ev._id === selected._id
+                  ? "bg-blue-100 text-blue-700"
+                  : "hover:bg-gray-50"
+              }`}
+            >
+              <div className="flex justify-between">
+                <span>#{ev.event_id ?? "-"}</span>
+                <Badge
+                  variant="outline"
+                  className={engineOnColor(ev.total_engine_on_min)}
+                >
                   {fmt(ev.total_engine_on_min, 1)} min
-                  {Number(ev.total_engine_on_min ?? 0) > 60 && " 🔥"})
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+                </Badge>
+              </div>
+            </li>
+          ))}
+        </ul>
       </aside>
 
-      {/* ───────────────── Map ───────────────── */}
+      {/* ───────────── Map ───────────── */}
       <main className="flex-1 relative">
-        {filteredEvents.length > 0 && selected && (
+        {mapEvents.length > 0 && selected && (
           <EngineonMapClient
-            events={filteredEvents}
+            events={mapEvents}
             activeId={selected._id}
             hoverId={hoverId}
           />
@@ -267,12 +257,8 @@ function Info({
 }) {
   return (
     <div className="flex flex-col">
-      <span className="text-gray-500 text-[10px] uppercase">
-        {label}
-      </span>
-      <span className="font-medium text-sm">
-        {value}
-      </span>
+      <span className="text-[10px] text-gray-500 uppercase">{label}</span>
+      <span className="font-medium text-sm">{value}</span>
     </div>
   )
 }
