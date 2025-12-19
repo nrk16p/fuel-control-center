@@ -98,7 +98,7 @@ export default function EngineonMap({
 
   if (validEvents.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-500 bg-gray-100">
+      <div className="h-full flex items-center justify-center text-gray-500 bg-gray-100 rounded-lg">
         🗺️ No coordinates found
       </div>
     )
@@ -114,77 +114,83 @@ export default function EngineonMap({
   ]
 
   return (
-    <MapContainer
-      center={defaultCenter}
-      zoom={13}
-      scrollWheelZoom
-      className="h-full w-full rounded-lg"
-      zoomControl
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <div className="relative z-0 h-full w-full">
+      <MapContainer
+        center={defaultCenter}
+        zoom={13}
+        scrollWheelZoom
+        zoomControl
+        className="h-full w-full rounded-lg relative z-0"
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
 
-      {/* 📍 Markers */}
-      {validEvents.map((event) => {
-        const icon =
-          event._id === activeId
-            ? activeIcon
-            : event._id === hoverId
-            ? hoverIcon
-            : getEngineOnIcon(event.total_engine_on_min)
+        {/* 📍 Markers */}
+        {validEvents.map((event) => {
+          const icon =
+            event._id === activeId
+              ? activeIcon
+              : event._id === hoverId
+              ? hoverIcon
+              : getEngineOnIcon(event.total_engine_on_min)
 
-        return (
-          <Marker
-            key={event._id}
-            position={[event.lat, event.lng]}
-            icon={icon}
-            eventHandlers={{
-              click: () => onSelect?.(event._id),
-            }}
-          >
-            <Popup>
-              <div className="text-sm leading-snug">
-                <strong>#{event.event_id ?? "-"}</strong>
-                <br />
-                📍 {event.nearest_plant ?? "-"}
-                <br />
-                🏙️ {event.สถานที่ ?? "-"}
-                <br />
-                ⏱️ {event.total_engine_on_min.toFixed(1)} นาที
-              </div>
-            </Popup>
-          </Marker>
-        )
-      })}
+          return (
+            <Marker
+              key={event._id}
+              position={[event.lat, event.lng]}
+              icon={icon}
+              eventHandlers={{
+                click: () => onSelect?.(event._id),
+              }}
+            >
+              <Popup>
+                <div className="text-sm leading-snug">
+                  <strong>#{event.event_id ?? "-"}</strong>
+                  <br />
+                  📍 {event.nearest_plant ?? "-"}
+                  <br />
+                  🏙️ {event.สถานที่ ?? "-"}
+                  <br />
+                  ⏱️ {event.total_engine_on_min.toFixed(1)} นาที
+                </div>
+              </Popup>
+            </Marker>
+          )
+        })}
 
-      {/* 🔵 Active highlight */}
-      {selectedEvent && (
-        <>
-          <Circle
-            center={[selectedEvent.lat, selectedEvent.lng]}
-            radius={150}
-            pathOptions={{
-              color: "#2563eb",
-              fillColor: "#3b82f6",
-              fillOpacity: 0.2,
-            }}
-          />
-          <AutoFocus activeEvent={selectedEvent} />
-        </>
-      )}
+        {/* 🔵 Active highlight */}
+        {selectedEvent && (
+          <>
+            <Circle
+              center={[selectedEvent.lat, selectedEvent.lng]}
+              radius={150}
+              pathOptions={{
+                color: "#2563eb",
+                fillColor: "#3b82f6",
+                fillOpacity: 0.2,
+              }}
+            />
+            <AutoFocus activeEvent={selectedEvent} />
+          </>
+        )}
 
-      {/* 📊 Legend */}
-      <Legend />
-    </MapContainer>
+        {/* 📊 Legend */}
+        <Legend />
+      </MapContainer>
+    </div>
   )
 }
 
 /* -------------------------------------------------
    👁️ AutoFocus — fly to active
 ------------------------------------------------- */
-function AutoFocus({ activeEvent }: { activeEvent: EventData & { lat: number; lng: number } }) {
+function AutoFocus({
+  activeEvent,
+}: {
+  activeEvent: EventData & { lat: number; lng: number }
+}) {
   const map = useMap()
 
   useEffect(() => {
@@ -198,19 +204,18 @@ function AutoFocus({ activeEvent }: { activeEvent: EventData & { lat: number; ln
 }
 
 /* -------------------------------------------------
-   📊 Legend Control (TS-SAFE)
+   📊 Legend Control
 ------------------------------------------------- */
 function Legend() {
   const map = useMap()
 
   useEffect(() => {
-    // ✅ TS-safe: use class instead of L.control()
     const legend = new L.Control({ position: "bottomright" })
 
     legend.onAdd = () => {
       const div = L.DomUtil.create(
         "div",
-        "bg-white p-3 rounded shadow text-xs leading-snug"
+        "leaflet-control bg-white p-3 rounded shadow text-xs leading-snug"
       )
 
       div.innerHTML = `

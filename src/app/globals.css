@@ -123,3 +123,17 @@
     @apply bg-background text-foreground;
   }
 }
+/* 🗺️ Leaflet layer order — never block Navbar */
+.leaflet-container {
+  z-index: 0 !important;
+}
+
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important;
+}
+
+.leaflet-control {
+  z-index: 20 !important;
+}

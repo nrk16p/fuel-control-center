@@ -1,58 +1,33 @@
 "use client"
 
+import { Construction, Loader2 } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+
 export default function DashboardPage() {
   return (
-    <main className="space-y-6 p-6 animate-pulse">
-      {/* Header */}
-      <div className="space-y-2">
-        <div className="h-8 w-64 rounded bg-gray-200" />
-        <div className="h-4 w-96 rounded bg-gray-100" />
-      </div>
-
-      {/* KPI cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="h-28 rounded-xl border bg-white p-4 shadow-sm"
-          >
-            <div className="h-4 w-24 rounded bg-gray-200 mb-3" />
-            <div className="h-7 w-32 rounded bg-gray-300" />
+    <main className="flex min-h-[80vh] items-center justify-center p-6">
+      <Card className="max-w-md w-full text-center shadow-lg">
+        <CardContent className="p-8 space-y-4">
+          <div className="flex justify-center">
+            <Construction className="h-12 w-12 text-yellow-500" />
           </div>
-        ))}
-      </div>
 
-      {/* Chart skeleton */}
-      <div className="rounded-xl border bg-white p-6 shadow-sm">
-        <div className="h-5 w-48 rounded bg-gray-200 mb-4" />
-        <div className="flex items-end gap-3 h-64">
-          {[...Array(12)].map((_, i) => (
-            <div
-              key={i}
-              className="w-full rounded bg-gray-200"
-              style={{ height: `${30 + (i % 5) * 15}%` }}
-            />
-          ))}
-        </div>
-      </div>
+          <h1 className="text-2xl font-bold">
+            🚧 Under Construction
+          </h1>
 
-      {/* Table skeleton */}
-      <div className="rounded-xl border bg-white p-4 shadow-sm">
-        <div className="h-5 w-40 rounded bg-gray-200 mb-4" />
-        {[...Array(6)].map((_, i) => (
-          <div
-            key={i}
-            className="mb-3 grid grid-cols-5 gap-4 last:mb-0"
-          >
-            {[...Array(5)].map((__, j) => (
-              <div
-                key={j}
-                className="h-4 rounded bg-gray-100"
-              />
-            ))}
+          <p className="text-gray-500">
+            This dashboard is currently being improved.
+            <br />
+            Please check back soon.
+          </p>
+
+          <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Data pipeline & KPI logic in progress
           </div>
-        ))}
-      </div>
+        </CardContent>
+      </Card>
     </main>
   )
 }
