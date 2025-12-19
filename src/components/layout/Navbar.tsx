@@ -1,51 +1,18 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu"
 import { Button } from "@/components/ui/button"
-import { useEffect, useState } from "react"
-import dayjs from "dayjs"
-
-interface HealthStatus {
-  status?: string
-  updated_at?: string
-}
 
 export default function Navbar() {
-  const [health, setHealth] = useState<HealthStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  /* ───────────────── Fetch health / last update ───────────────── */
-  useEffect(() => {
-    const fetchHealth = async () => {
-      try {
-        const res = await fetch(
-          "https://api-engineon.onrender.com/healthz",
-          { cache: "no-store" }
-        )
-        const json = await res.json()
-
-        setHealth({
-          status: json.status ?? "ok",
-          updated_at: json.updated_at ?? new Date().toISOString(),
-        })
-      } catch {
-        setHealth({ status: "down" })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchHealth()
-  }, [])
-
-  /* ───────────────── Helpers ───────────────── */
-  const StatusDot = () => {
-    if (loading) return <span className="text-gray-400">●</span>
-    if (health?.status === "ok")
-      return <span className="text-green-500">●</span>
-    return <span className="text-red-500">●</span>
-  }
-
   return (
     <nav className="flex items-center justify-between bg-white border-b px-6 py-3 shadow-sm">
       {/* Logo */}
@@ -57,28 +24,68 @@ export default function Navbar() {
       </Link>
 
       {/* Navigation */}
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard">
-          <Button variant="outline">📊 Dashboard</Button>
-        </Link>
+      <NavigationMenu>
+        <NavigationMenuList className="gap-2">
 
-        <Link href="/engineon">
-          <Button variant="outline">🚛 Engine-On</Button>
-        </Link>
+          {/* Dashboard */}
+          <NavigationMenuItem>
+            <Link href="/dashboard" legacyBehavior passHref>
+              <NavigationMenuLink className="nav-link">
+                📊 Dashboard
+              </NavigationMenuLink>
+            </Link>
+          </NavigationMenuItem>
 
-        <Link href="/pipeline">
-          <Button variant="outline">🧭 Pipeline</Button>
-        </Link>
+          {/* Operations */}
+          <NavigationMenuItem>
+            <NavigationMenuTrigger>🧭 Operations</NavigationMenuTrigger>
+            <NavigationMenuContent>
+              <ul className="grid w-[220px] gap-1 p-2">
+                <li>
+                  <Link href="/engineon" legacyBehavior passHref>
+                    <NavigationMenuLink className="nav-sub">
+                      🚛 Engine-On
+                    </NavigationMenuLink>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/pipeline" legacyBehavior passHref>
+                    <NavigationMenuLink className="nav-sub">
+                      🔄 Pipeline
+                    </NavigationMenuLink>
+                  </Link>
+                </li>
+              </ul>
+            </NavigationMenuContent>
+          </NavigationMenuItem>
 
-        <Link href="/plants">
-          <Button variant="outline">🏭 Plants</Button>
-        </Link>
+          {/* Master Data */}
+          <NavigationMenuItem>
+            <NavigationMenuTrigger>🏭 Master Data</NavigationMenuTrigger>
+            <NavigationMenuContent>
+              <ul className="grid w-[220px] gap-1 p-2">
+                <li>
+                  <Link href="/plants" legacyBehavior passHref>
+                    <NavigationMenuLink className="nav-sub">
+                      🏭 Plants
+                    </NavigationMenuLink>
+                  </Link>
+                </li>
+              </ul>
+            </NavigationMenuContent>
+          </NavigationMenuItem>
 
-        <Link href="/settings">
-          <Button variant="secondary">⚙️ Settings</Button>
-        </Link>
+          {/* Settings */}
+          <NavigationMenuItem>
+            <Link href="/settings" legacyBehavior passHref>
+              <NavigationMenuLink className="nav-link">
+                ⚙️ Settings
+              </NavigationMenuLink>
+            </Link>
+          </NavigationMenuItem>
 
-      </div>
+        </NavigationMenuList>
+      </NavigationMenu>
     </nav>
   )
 }
