@@ -23,12 +23,12 @@ dayjs.locale("th")
 ------------------------------------------------- */
 export interface RawEngineonData {
   _id: string
-  date: string
-  count_records: number
-  total_engine_on_hr: number
-  total_engine_on_min: number
-  version_type: string
-  ทะเบียนพาหนะ: string
+  date?: string
+  count_records?: number
+  total_engine_on_hr?: number
+  total_engine_on_min?: number
+  version_type?: string
+  ทะเบียนพาหนะ?: string
   สถานที่?: string
   start_time?: string
   end_time?: string
@@ -39,17 +39,25 @@ export interface RawEngineonData {
 }
 
 /* -------------------------------------------------
-   🎨 Helpers
+   🔐 Helpers (SAFE)
 ------------------------------------------------- */
-function engineOnLevel(min: number): "red" | "orange" | "green" {
-  if (min > 60) return "red"
-  if (min >= 30) return "orange"
+const fmt = (v?: number | null, d = 2) =>
+  Number(v ?? 0).toFixed(d)
+
+const safeDate = (v?: string, f = "DD/MM/YYYY") =>
+  v ? dayjs.utc(v).format(f) : "-"
+
+function engineOnLevel(min?: number): "red" | "orange" | "green" {
+  const v = Number(min ?? 0)
+  if (v > 60) return "red"
+  if (v >= 30) return "orange"
   return "green"
 }
 
-function engineOnColor(min: number): string {
-  if (min > 60) return "text-red-600"
-  if (min >= 30) return "text-orange-600"
+function engineOnColor(min?: number): string {
+  const v = Number(min ?? 0)
+  if (v > 60) return "text-red-600"
+  if (v >= 30) return "text-orange-600"
   return "text-green-600"
 }
 
@@ -70,28 +78,29 @@ export default function EngineonDetailClient({
     )
   }
 
-  const [selected, setSelected] = useState<RawEngineonData>(events[0])
   const [plantFilter, setPlantFilter] = useState<string>("all")
+  const [selected, setSelected] = useState<RawEngineonData>(events[0])
   const [hoverId, setHoverId] = useState<string | null>(null)
-
-  /* ───── keep selected valid when filter changes ───── */
-  useEffect(() => {
-    if (!selected || !events.find((e) => e._id === selected._id)) {
-      setSelected(events[0])
-    }
-  }, [events, selected])
 
   /* 🌱 Unique plant list */
   const plants = useMemo(() => {
-    const unique = new Set(events.map((e) => e.nearest_plant ?? "Unknown"))
+    const unique = new Set(events.map(e => e.nearest_plant ?? "Unknown"))
     return ["all", ...Array.from(unique)]
   }, [events])
 
   /* 🔍 Filtered events */
   const filteredEvents = useMemo(() => {
     if (plantFilter === "all") return events
-    return events.filter((e) => e.nearest_plant === plantFilter)
+    return events.filter(e => e.nearest_plant === plantFilter)
   }, [events, plantFilter])
+
+  /* 🔄 Keep selected valid */
+  useEffect(() => {
+    const valid = filteredEvents.find(e => e._id === selected?._id)
+    if (!valid && filteredEvents.length > 0) {
+      setSelected(filteredEvents[0])
+    }
+  }, [filteredEvents, selected])
 
   /* 📊 Summary badge */
   const summary = useMemo(() => {
@@ -99,9 +108,10 @@ export default function EngineonDetailClient({
     let orange = 0
     let green = 0
 
-    filteredEvents.forEach((e) => {
-      if (e.total_engine_on_min > 60) red++
-      else if (e.total_engine_on_min >= 30) orange++
+    filteredEvents.forEach(e => {
+      const min = Number(e.total_engine_on_min ?? 0)
+      if (min > 60) red++
+      else if (min >= 30) orange++
       else green++
     })
 
@@ -114,14 +124,14 @@ export default function EngineonDetailClient({
       <aside className="w-full md:w-[38%] lg:w-[30%] xl:w-[28%] bg-white border-r shadow-sm overflow-y-auto p-6 space-y-6">
         {/* Header */}
         <header className="sticky top-0 bg-white pb-2 border-b z-10">
-          <h1 className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+          <h1 className="text-xl font-bold mb-1 flex items-center gap-2">
             Engine-On Details <Badge variant="secondary">v2</Badge>
           </h1>
 
           <p className="text-sm text-gray-600">
             🚚 ทะเบียนรถ{" "}
             <span className="font-semibold text-blue-600">
-              {selected["ทะเบียนพาหนะ"]}
+              {selected.ทะเบียนพาหนะ ?? "-"}
             </span>
           </p>
 
@@ -130,7 +140,6 @@ export default function EngineonDetailClient({
             {filteredEvents.length !== 1 && "s"}
           </p>
 
-          {/* Summary */}
           <div className="flex gap-2 mt-2">
             <Badge className="bg-red-100 text-red-700">🔴 {summary.red}</Badge>
             <Badge className="bg-orange-100 text-orange-700">
@@ -152,7 +161,7 @@ export default function EngineonDetailClient({
               <SelectValue placeholder="Select a plant" />
             </SelectTrigger>
             <SelectContent>
-              {plants.map((p) => (
+              {plants.map(p => (
                 <SelectItem key={p} value={p}>
                   {p === "all" ? "All Plants" : p}
                 </SelectItem>
@@ -163,88 +172,57 @@ export default function EngineonDetailClient({
 
         {/* Detail Info */}
         <section className="space-y-3 text-sm border-b pb-4">
-          <Info
-            label="วันที่"
-            value={dayjs.utc(selected.date).format("DD/MM/YYYY")}
-          />
-          <Info label="Records" value={selected.count_records} />
-          <Info
-            label="Engine-On (ชม.)"
-            value={selected.total_engine_on_hr.toFixed(2)}
-          />
-          <Info
-            label="Engine-On (นาที)"
-            value={selected.total_engine_on_min.toFixed(2)}
-          />
+          <Info label="วันที่" value={safeDate(selected.date)} />
+          <Info label="Records" value={selected.count_records ?? 0} />
+          <Info label="Engine-On (ชม.)" value={fmt(selected.total_engine_on_hr)} />
+          <Info label="Engine-On (นาที)" value={fmt(selected.total_engine_on_min)} />
           <Info
             label="Start Time"
-            value={
-              selected.start_time
-                ? dayjs.utc(selected.start_time).format("DD/MM/YYYY HH:mm:ss")
-                : "-"
-            }
+            value={safeDate(selected.start_time, "DD/MM/YYYY HH:mm:ss")}
           />
           <Info
             label="End Time"
-            value={
-              selected.end_time
-                ? dayjs.utc(selected.end_time).format("DD/MM/YYYY HH:mm:ss")
-                : "-"
-            }
+            value={safeDate(selected.end_time, "DD/MM/YYYY HH:mm:ss")}
           />
           <Info label="สถานที่" value={selected.สถานที่ ?? "-"} />
           <Info label="Nearest Plant" value={selected.nearest_plant ?? "-"} />
 
           <div className="flex gap-2">
-            <Badge variant="outline">
-              Lat {selected.lat?.toFixed(6) ?? "-"}
-            </Badge>
-            <Badge variant="outline">
-              Lng {selected.lng?.toFixed(6) ?? "-"}
-            </Badge>
+            <Badge variant="outline">Lat {fmt(selected.lat, 6)}</Badge>
+            <Badge variant="outline">Lng {fmt(selected.lng, 6)}</Badge>
           </div>
         </section>
 
         {/* Back */}
-        <div className="pt-4">
-          <a
-            href="/engineon"
-            className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-          >
-            ← Back to Table
-          </a>
-        </div>
+        <a
+          href="/engineon"
+          className="inline-flex items-center justify-center w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        >
+          ← Back to Table
+        </a>
 
         {/* All Events */}
         <section className="pt-4">
-          <p className="text-xs font-semibold text-gray-600 mb-2">
-            All Events
-          </p>
+          <p className="text-xs font-semibold mb-2">All Events</p>
           <ul className="space-y-1">
-            {filteredEvents.map((ev) => (
+            {filteredEvents.map(ev => (
               <li
                 key={ev._id}
                 onClick={() => setSelected(ev)}
                 onMouseEnter={() => setHoverId(ev._id)}
                 onMouseLeave={() => setHoverId(null)}
-                className={`cursor-pointer text-xs px-2 py-2 rounded transition ${
+                className={`cursor-pointer text-xs px-2 py-2 rounded ${
                   ev._id === selected._id
                     ? "bg-blue-100 text-blue-700 font-semibold"
-                    : "text-gray-700 hover:bg-gray-50"
+                    : "hover:bg-gray-50"
                 }`}
               >
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">
-                    #{ev.event_id ?? "–"}
-                  </span>
+                <div className="flex justify-between">
+                  <span>#{ev.event_id ?? "–"}</span>
                   <Badge
                     variant="outline"
                     className={`text-[10px] ${
-                      engineOnLevel(ev.total_engine_on_min) === "red"
-                        ? "border-red-300 text-red-600"
-                        : engineOnLevel(ev.total_engine_on_min) === "orange"
-                        ? "border-orange-300 text-orange-600"
-                        : "border-green-300 text-green-600"
+                      engineOnColor(ev.total_engine_on_min)
                     }`}
                   >
                     {ev.nearest_plant ?? "-"}
@@ -252,19 +230,10 @@ export default function EngineonDetailClient({
                 </div>
 
                 <div className={engineOnColor(ev.total_engine_on_min)}>
-                  {ev.start_time
-                    ? dayjs.utc(ev.start_time).format("HH:mm:ss")
-                    : "--"}{" "}
-                  →{" "}
-                  {ev.end_time
-                    ? dayjs.utc(ev.end_time).format("HH:mm:ss")
-                    : "--"}{" "}
-                  ({ev.total_engine_on_min.toFixed(1)} min
-                  {ev.total_engine_on_min > 60 && " 🔥"}
-                  {ev.total_engine_on_min >= 30 &&
-                    ev.total_engine_on_min <= 60 &&
-                    " !"}
-                  )
+                  {safeDate(ev.start_time, "HH:mm:ss")} →{" "}
+                  {safeDate(ev.end_time, "HH:mm:ss")} (
+                  {fmt(ev.total_engine_on_min, 1)} min
+                  {Number(ev.total_engine_on_min ?? 0) > 60 && " 🔥"})
                 </div>
               </li>
             ))}
@@ -274,11 +243,13 @@ export default function EngineonDetailClient({
 
       {/* ───────────────── Map ───────────────── */}
       <main className="flex-1 relative">
-        <EngineonMapClient
-          events={filteredEvents}
-          activeId={selected._id}
-          hoverId={hoverId}
-        />
+        {filteredEvents.length > 0 && selected && (
+          <EngineonMapClient
+            events={filteredEvents}
+            activeId={selected._id}
+            hoverId={hoverId}
+          />
+        )}
       </main>
     </div>
   )
@@ -296,10 +267,10 @@ function Info({
 }) {
   return (
     <div className="flex flex-col">
-      <span className="text-gray-500 text-[10px] uppercase tracking-wide">
+      <span className="text-gray-500 text-[10px] uppercase">
         {label}
       </span>
-      <span className="font-medium text-gray-900 text-sm break-words">
+      <span className="font-medium text-sm">
         {value}
       </span>
     </div>
