@@ -42,6 +42,13 @@ export default function Navbar() {
             <NavigationMenuContent>
               <ul className="grid w-[220px] gap-1 p-2">
                 <li>
+                  <Link href="/fueldetection" legacyBehavior passHref>
+                    <NavigationMenuLink className="nav-sub">
+                      ⛽ Fuel-Detection
+                    </NavigationMenuLink>
+                  </Link>
+                </li>
+                <li>
                   <Link href="/engineon" legacyBehavior passHref>
                     <NavigationMenuLink className="nav-sub">
                       🚛 Engine-On
