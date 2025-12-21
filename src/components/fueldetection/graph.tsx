@@ -38,7 +38,7 @@ interface FuelDetectionData {
 /* ================= Component ================= */
 
 export const FuelDetectionGraph = ({ data }: { data: FuelDetectionData[] }) => {
-  const [showMockData, setShowMockData] = useState(true);
+  const [showMockData, setShowMockData] = useState(false);
 
   // Mock data with at least 8 days
   const mockData: FuelDetectionData[] = [
@@ -227,7 +227,6 @@ export const FuelDetectionGraph = ({ data }: { data: FuelDetectionData[] }) => {
 
   return (
     <div className="w-full">
-      {/* Toggle button for mock data */}
       <div className="mb-4 flex items-center gap-3">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
@@ -240,11 +239,11 @@ export const FuelDetectionGraph = ({ data }: { data: FuelDetectionData[] }) => {
             แสดงข้อมูล Mock Data
           </span>
         </label>
-        {showMockData && (
+        {/* {showMockData && (
           <span className="text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded">
             กำลังใช้ข้อมูลจำลอง ({mockData.length} รายการ, 8 วัน)
           </span>
-        )}
+        )} */}
       </div>
 
       {/* Chart container */}
@@ -254,11 +253,11 @@ export const FuelDetectionGraph = ({ data }: { data: FuelDetectionData[] }) => {
 
       {/* Data summary */}
       <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-blue-50 rounded-lg p-3">
-          <p className="text-xs text-blue-600 font-medium">จำนวนข้อมูล</p>
-          <p className="text-xl font-bold text-blue-800">{displayData.length} รายการ</p>
+        <div className="bg-white border border-gray-100 rounded-lg shadow p-3">
+          <p className="text-xs text-blue-600 font-medium">ความเร็วสูงสุด</p>
+          <p className="text-xl font-bold text-blue-800">{displayData.length > 0 ? Math.max(...speedData) : 0} กม./ชม.</p>
         </div>
-        <div className="bg-green-50 rounded-lg p-3">
+        <div className="bg-white border border-gray-100 rounded-lg shadow p-3">
           <p className="text-xs text-green-600 font-medium">ความเร็วเฉลี่ย</p>
           <p className="text-xl font-bold text-green-800">
             {displayData.length > 0 
@@ -266,13 +265,13 @@ export const FuelDetectionGraph = ({ data }: { data: FuelDetectionData[] }) => {
               : 0} กม./ชม.
           </p>
         </div>
-        <div className="bg-blue-50 rounded-lg p-3">
+        <div className="bg-white border border-gray-100 rounded-lg shadow p-3">
           <p className="text-xs text-blue-600 font-medium">น้ำมันสูงสุด</p>
           <p className="text-xl font-bold text-blue-800">
             {displayData.length > 0 ? Math.max(...fuelData) : 0} ลิตร
           </p>
         </div>
-        <div className="bg-red-50 rounded-lg p-3">
+        <div className="bg-white border border-gray-100 rounded-lg shadow p-3">
           <p className="text-xs text-red-600 font-medium">น้ำมันต่ำสุด</p>
           <p className="text-xl font-bold text-red-800">
             {displayData.length > 0 ? Math.min(...fuelData) : 0} ลิตร

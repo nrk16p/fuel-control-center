@@ -6,36 +6,39 @@ import { FuelDetectionGraph } from "@/components/fueldetection/graph"
 export default function FuelDetectionPage() {
     const [data, setData] = useState<FuelDetectionData[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
-    const [filters, setFilters] = useState<{ plateDriver: string; startDate: string; endDate: string }>({ plateDriver: "", startDate: "", endDate: "" });
 
-    const fetchData = async () => {
+    const handleQueryApply = (newFilters: { plateDriver: string; startDate: string; endDate: string }) => {
         setLoading(true);
-        try {
-            const params = new URLSearchParams();
-            if (filters.plateDriver) params.append("plateDriver", filters.plateDriver);
-            if (filters.startDate) params.append("startDate", filters.startDate);
-            if (filters.endDate) params.append("endDate", filters.endDate);
-            const res = await fetch(`/api/fuel-detection?${params.toString()}`, { headers: { "Cache-Control": "no-cache" }, cache: "no-store" });
-            if (!res.ok) return alert("Failed to fetch data");
-            const json = await res.json();
-            console.log("Fetched Data:", json);
-            setData(json);
-        }
-        catch (error) {
-            console.error("Error fetching data:", error);
-        }
-        setLoading(false);
+        (async () => {
+            try {
+                if( !newFilters.plateDriver || !newFilters.startDate || !newFilters.endDate ) {
+                    setData([]);
+                    setLoading(false);
+                    return;
+                }
+                const params = new URLSearchParams();
+                if (newFilters.plateDriver) params.append("plateDriver", newFilters.plateDriver);
+                if (newFilters.startDate) params.append("startDate", newFilters.startDate);
+                if (newFilters.endDate) params.append("endDate", newFilters.endDate);
+                const res = await fetch(`/api/fuel-detection?${params.toString()}`, { headers: { "Cache-Control": "no-cache" }, cache: "no-store" });
+                if (!res.ok) return alert("Failed to fetch data res.ok=false");
+                const json = await res.json();
+                console.log("Fetched Data:", json);
+                setData(json);
+            }
+            catch (error) {
+                console.error("Error fetching data:", error);
+                alert("error fetching data : " + error);
+            }
+            setLoading(false);
+        })();
     };
-
-    useEffect(() => {
-        fetchData();
-    }, [filters]);
 
     return (
         <div className="p-6 space-y-4">
             <h1 className="text-2xl font-bold">⛽ Fuel Detection</h1>
             {/* Filter Component */}
-            <FuelDetectionFilter query={setFilters} />
+            <FuelDetectionFilter query={handleQueryApply} isLoading={loading} />
 
             {/* Data Graph */}
             {loading ? (

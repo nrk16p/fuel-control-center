@@ -14,13 +14,13 @@ import { Button } from "@/components/ui/button"
 
 export default function Navbar() {
   return (
-    <nav className="flex items-center justify-between bg-white border-b px-6 py-3 shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-white border-b px-6 py-3 shadow-sm">
       {/* Logo */}
       <Link
         href="/"
-        className="font-bold text-lg text-blue-600 flex items-center gap-2"
+        className="font-bold text-lg text-blue-600 flex items-center gap-4"
       >
-        ⛽ <span>Fuel Control Center</span>
+        <img src="./mena.png" alt="Oil Industry" className="w-12 h-8" /> <span>Fuel Control Center</span>
       </Link>
 
       {/* Navigation */}
