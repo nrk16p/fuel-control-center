@@ -2,7 +2,15 @@
 import { useState } from "react"
 import { FuelDetectionFilter } from "@/components/fueldetection/filter"
 import { FuelDetectionGraph } from "@/components/fueldetection/graph"
-import type { FuelDetectionData } from "@/lib/types"
+/* ================= Types ================= */
+ interface FuelDetectionData {
+    _id: string;
+    วันที่: string;
+    เวลา: string;
+    ทะเบียนพาหนะ: string;
+    น้ำมัน: number;
+    "ความเร็ว(กม./ชม.)": number;
+}
 
 export default function FuelDetectionPage() {
     const [data, setData] = useState<FuelDetectionData[]>([]);
