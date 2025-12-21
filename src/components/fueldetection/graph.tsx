@@ -1,29 +1,8 @@
 "use client"
 import { useState } from "react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
+import { Chart as ChartJS, registerables } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
-
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(...registerables);
 
 /* ================= Types ================= */
 interface FuelDetectionData {
@@ -83,16 +62,12 @@ export const FuelDetectionGraph = ({ data }: { data: FuelDetectionData[] }) => {
     { "_id": "24", "วันที่": "21/12/2025", "เวลา": "18:00:00", "ทะเบียนพาหนะ": "71-8623", "น้ำมัน": 80, "ความเร็ว(กม./ชม.)": 35 },
   ];
 
-  // Use mock data or real data based on toggle
   const displayData = showMockData ? mockData : data;
 
-  // Prepare labels (date + time)
   const labels = displayData.map(item => `${item.วันที่} ${item.เวลา}`);
-  
-  // Prepare fuel level data (for line chart)
+
   const fuelData = displayData.map(item => item.น้ำมัน);
-  
-  // Prepare speed data (for bar chart)
+
   const speedData = displayData.map(item => item["ความเร็ว(กม./ชม.)"]);
 
   const chartData = {
