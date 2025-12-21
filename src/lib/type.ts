@@ -3,6 +3,7 @@ type FuelDetectionData = {
     "ทะเบียนพาหนะ": string;
     "วันที่": string;
     "เวลา": string;
+    "ความเร็ว(กม./ชม.)": number;
     "ระยะทาง(กม.)": number;
     "น้ำมัน": number;
     "สถานะ": string;

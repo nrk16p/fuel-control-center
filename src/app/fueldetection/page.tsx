@@ -55,7 +55,7 @@ export default function FuelDetectionPage() {
                     </div>
                 </div>
             ) : (
-                <FuelDetectionGraph data={data} />
+                <FuelDetectionGraph data={data as FuelDetectionData[]} />
             )}
         </div>
     );
