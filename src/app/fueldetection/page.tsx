@@ -2,45 +2,35 @@
 import { useState } from "react"
 import { FuelDetectionFilter } from "@/components/fueldetection/filter"
 import { FuelDetectionGraph } from "@/components/fueldetection/graph"
-/* ================= Types ================= */
- interface FuelDetectionData {
-    _id: string;
-    วันที่: string;
-    เวลา: string;
-    ทะเบียนพาหนะ: string;
-    น้ำมัน: number;
-    "ความเร็ว(กม./ชม.)": number;
-}
+import type { FuelDetectionData } from "@/lib/types"
 
 export default function FuelDetectionPage() {
     const [data, setData] = useState<FuelDetectionData[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
-    const handleQueryApply = (newFilters: { plateDriver: string; startDate: string; endDate: string }) => {
+    const handleQueryApply = async (newFilters: { plateDriver: string; startDate: string; endDate: string }) => {
         setLoading(true);
-        (async () => {
-            try {
-                if( !newFilters.plateDriver || !newFilters.startDate || !newFilters.endDate ) {
-                    setData([]);
-                    setLoading(false);
-                    return;
-                }
-                const params = new URLSearchParams();
-                if (newFilters.plateDriver) params.append("plateDriver", newFilters.plateDriver);
-                if (newFilters.startDate) params.append("startDate", newFilters.startDate);
-                if (newFilters.endDate) params.append("endDate", newFilters.endDate);
-                const res = await fetch(`/api/fuel-detection?${params.toString()}`, { headers: { "Cache-Control": "no-cache" }, cache: "no-store" });
-                if (!res.ok) return alert("Failed to fetch data res.ok=false");
-                const json = await res.json();
-                console.log("Fetched Data:", json);
-                setData(json);
+        try {
+            if (!newFilters.plateDriver || !newFilters.startDate || !newFilters.endDate) {
+                setData([]);
+                setLoading(false);
+                return;
             }
-            catch (error) {
-                console.error("Error fetching data:", error);
-                alert("error fetching data : " + error);
-            }
-            setLoading(false);
-        })();
+            const params = new URLSearchParams();
+            if (newFilters.plateDriver) params.append("plateDriver", newFilters.plateDriver);
+            if (newFilters.startDate) params.append("startDate", newFilters.startDate);
+            if (newFilters.endDate) params.append("endDate", newFilters.endDate);
+            const res = await fetch(`/api/fuel-detection?${params.toString()}`, { headers: { "Cache-Control": "no-cache" }, cache: "no-store" });
+            if (!res.ok) return alert("Failed to fetch data res.ok=false");
+            const json = await res.json();
+            console.log("Fetched Data:", json);
+            setData(json);
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            alert("error fetching data : " + error);
+        }
+        setLoading(false);
+
     };
 
     return (
@@ -67,7 +57,7 @@ export default function FuelDetectionPage() {
                     </div>
                 </div>
             ) : (
-                <FuelDetectionGraph data={data as FuelDetectionData[]} />
+                <FuelDetectionGraph data={data} />
             )}
         </div>
     );
