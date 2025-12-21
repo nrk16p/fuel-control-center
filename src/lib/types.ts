@@ -1,4 +1,4 @@
-type FuelDetectionData = {
+export type FuelDetectionData = {
     _id: string;
     "ทะเบียนพาหนะ": string;
     "วันที่": string;

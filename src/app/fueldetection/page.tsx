@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { FuelDetectionFilter } from "@/components/fueldetection/filter"
 import { FuelDetectionGraph } from "@/components/fueldetection/graph"
+import type { FuelDetectionData } from "@/lib/types"
 
 export default function FuelDetectionPage() {
     const [data, setData] = useState<FuelDetectionData[]>([]);
