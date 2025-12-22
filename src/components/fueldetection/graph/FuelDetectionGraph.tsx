@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { FuelChart } from "./FuelChart"
 import { SuspiciousCaseCard } from "./SuspiciousCaseCard"
+import { ReviewPanel } from "./ReviewPanel"
 import { toDateFromThai, overlap } from "@/lib/dt-th"
 import type { FuelDetectionData } from "@/lib/types"
 
@@ -30,6 +31,10 @@ export default function FuelDetectionGraph({
   data,
   reviews,
 }: Props) {
+  /* ---------- selection state ---------- */
+  const [selStart, setSelStart] = useState<number | null>(null)
+  const [selEnd, setSelEnd] = useState<number | null>(null)
+
   /* ---------- Data prep ---------- */
   const labels = useMemo(
     () => data.map(d => `${d.วันที่} ${d.เวลา}`),
@@ -44,7 +49,7 @@ export default function FuelDetectionGraph({
     [data]
   )
 
-  const tsData = useMemo(
+  const tsData = useMemo<(number | null)[]>(
     () =>
       data.map(d => {
         const dt = toDateFromThai(d.วันที่, d.เวลา)
@@ -81,7 +86,7 @@ export default function FuelDetectionGraph({
     }
   }, [reviews, tsData])
 
-  /* ---------- suspicious windows ---------- */
+  /* ---------- suspicious ---------- */
   const suspiciousReviews = useMemo(
     () => reviews.filter(r => r.decision === "reviewed_suspicious"),
     [reviews]
@@ -109,6 +114,52 @@ export default function FuelDetectionGraph({
     return out
   }, [suspiciousReviews, tsData])
 
+  /* ---------- select from chart ---------- */
+  const handleSelectIndex = (idx: number) => {
+    if (selStart == null || selEnd != null) {
+      setSelStart(idx)
+      setSelEnd(null)
+    } else {
+      setSelEnd(idx)
+    }
+  }
+
+  /* ---------- select from card ---------- */
+  const selectFromReview = (r: ReviewRow) => {
+    let start: number | null = null
+    let end: number | null = null
+
+    tsData.forEach((ts, i) => {
+      if (ts != null && overlap(ts, ts, r.start_ts, r.end_ts)) {
+        if (start == null) start = i
+        end = i
+      }
+    })
+
+    if (start != null && end != null) {
+      setSelStart(start)
+      setSelEnd(end)
+    }
+  }
+
+  /* ---------- selected summary ---------- */
+  const selected =
+    selStart != null && selEnd != null
+      ? {
+          plate: data[selStart].ทะเบียนพาหนะ,
+          startDate: data[selStart].วันที่,
+          startTime: data[selStart].เวลา,
+          endDate: data[selEnd].วันที่,
+          endTime: data[selEnd].เวลา,
+          fuelStart: data[selStart].น้ำมัน,
+          fuelEnd: data[selEnd].น้ำมัน,
+          fuelDiff:
+            Number(data[selStart].น้ำมัน ?? 0) -
+            Number(data[selEnd].น้ำมัน ?? 0),
+          durationMin: Math.abs(selEnd - selStart) * 5,
+        }
+      : null
+
   /* ---------- Render ---------- */
   return (
     <div className="space-y-6">
@@ -116,14 +167,13 @@ export default function FuelDetectionGraph({
         ⚪ Unreviewed | 🔵 Reviewed | 🔴 ลดลงผิดปกติ
       </div>
 
-      {/* Chart */}
       <FuelChart
         labels={labels}
         fuelData={fuelData}
         speedData={speedData}
         bandWindows={bandWindows}
         suspiciousWindows={suspiciousWindows}
-        onSelectIndex={() => {}}
+        onSelectIndex={handleSelectIndex}
       />
 
       {/* Suspicious Cards */}
@@ -141,15 +191,23 @@ export default function FuelDetectionGraph({
             fuelDiff={r.fuel_diff}
             note={r.note}
             reviewer={r.reviewer}
+            onSelect={() => selectFromReview(r)} // ✅ สำคัญ
           />
         ))}
-
-        {suspiciousReviews.length === 0 && (
-          <div className="text-sm text-gray-500">
-            ไม่มีเคสลดลงผิดปกติในช่วงเวลาที่เลือก
-          </div>
-        )}
       </div>
+
+      {/* Review Panel */}
+      {selected && (
+        <ReviewPanel
+          selected={selected}
+          decision="reviewed_suspicious"
+          note=""
+          saving={false}
+          onDecisionChange={() => {}}
+          onNoteChange={() => {}}
+          onSave={() => {}}
+        />
+      )}
     </div>
   )
 }

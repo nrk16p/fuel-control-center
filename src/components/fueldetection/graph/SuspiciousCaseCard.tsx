@@ -12,6 +12,7 @@ interface Props {
   fuelDiff?: number
   note?: string
   reviewer?: string
+  onSelect: () => void   // ✅ เพิ่ม
 }
 
 export function SuspiciousCaseCard({
@@ -21,10 +22,14 @@ export function SuspiciousCaseCard({
   fuelDiff,
   note,
   reviewer,
+  onSelect,
 }: Props) {
   return (
-    <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-1">
-      <div className="font-semibold text-red-700 flex items-center gap-2">
+    <div
+      className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-1 cursor-pointer hover:ring-2 hover:ring-red-300"
+      onClick={onSelect}
+    >
+      <div className="font-semibold text-red-700">
         ⚠️ รถ {plate}
       </div>
 
@@ -40,15 +45,10 @@ export function SuspiciousCaseCard({
         </span>
       </div>
 
-      {note && (
-        <div className="text-sm text-gray-600">
-          📝 {note}
-        </div>
-      )}
-
+      {note && <div className="text-sm">📝 {note}</div>}
       {reviewer && (
         <div className="text-xs text-gray-500">
-          Reviewed by: {reviewer}
+          Reviewed by {reviewer}
         </div>
       )}
     </div>
