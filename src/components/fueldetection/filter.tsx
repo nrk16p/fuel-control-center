@@ -51,7 +51,7 @@ export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterPro
       plateDriver: selectedPlateDriver,
       startDate: formatDate(dateRange.from),
       endDate: formatDate(dateRange.to),
-      status,
+      status, // ✅ ส่งสถานะจริงจาก DB
     })
   }
 
@@ -82,18 +82,18 @@ export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterPro
           />
         </div>
 
-        {/* Status */}
+        {/* Status (ใช้ค่าจาก DB  */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">สถานะ</label>
+          <label className="text-xs text-gray-500">สถานะรถ</label>
           <select
             className="h-9 w-40 rounded-md border bg-white px-2 text-sm shadow-xs"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
             <option value="all">ทั้งหมด</option>
-            <option value="normal">ปกติ</option>
-            <option value="risk">เสี่ยง</option>
-            <option value="missing">ข้อมูลขาด</option>
+            <option value="รถวิ่ง">รถวิ่ง</option>
+            <option value="ดับเครื่อง">ดับเครื่อง</option>
+            <option value="จอดรถ">จอดรถ</option>
           </select>
         </div>
       </div>
