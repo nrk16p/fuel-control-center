@@ -1,67 +1,108 @@
 // src/app/page.tsx
 
+"use client"
+
+import { motion } from "framer-motion"
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+    },
+  },
+}
+
+const item = {
+  hidden: { opacity: 0, y: 16 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: "easeOut",
+    },
+  },
+}
+
 export default function HomePage() {
   return (
     <main className="flex min-h-[80vh] items-center justify-center px-6">
-      <div className="mx-auto max-w-3xl text-center">
+      <motion.div
+        className="mx-auto max-w-3xl text-center"
+        variants={container}
+        initial="hidden"
+        animate="show"
+      >
         {/* Title */}
-        <h1 className="mb-4 text-4xl font-bold text-blue-600">
+        <motion.h1
+          variants={item}
+          className="mb-4 text-4xl font-bold text-blue-600"
+        >
           ⛽ Fuel Control Center
-        </h1>
+        </motion.h1>
 
-        {/* Introduction */}
-        <p className="mx-auto mb-10 text-base leading-relaxed text-gray-600">
-          ศูนย์กลางสำหรับ <span className="font-medium">ตรวจสอบ ควบคุม และวิเคราะห์</span>{" "}
-          การใช้น้ำมันและพฤติกรรมรถ
-          เพื่อช่วยให้ทีมปฏิบัติการตัดสินใจจากข้อมูลจริง
-          ลดความสูญเสีย และตรวจสอบย้อนหลังได้อย่างเป็นระบบ
-        </p>
+        {/* Executive Intro */}
+        <motion.p
+          variants={item}
+          className="mx-auto mb-10 text-base leading-relaxed text-gray-600"
+        >
+          ระบบศูนย์กลางสำหรับ{" "}
+          <span className="font-medium">ตรวจสอบ ควบคุม และวิเคราะห์</span>{" "}
+          การใช้น้ำมันและพฤติกรรมการใช้งานรถ
+          เพื่อช่วยให้องค์กรลดต้นทุน เพิ่มประสิทธิภาพ
+          และตัดสินใจได้จากข้อมูลจริงอย่างโปร่งใส
+        </motion.p>
 
         {/* Modules */}
-        <div className="grid gap-4 text-left sm:grid-cols-2">
-          <div className="rounded-lg border p-4">
+        <motion.div
+          variants={container}
+          className="grid gap-4 text-left sm:grid-cols-2"
+        >
+          <motion.div variants={item} className="rounded-lg border p-4">
             <div className="mb-1 font-medium">🔥 Engine-On</div>
             <p className="text-sm text-gray-500">
               วิเคราะห์การติดเครื่องเป็นเวลานาน
-              แยกกรณีจอดติดเครื่อง เคลื่อนที่ช้า
-              และอยู่ในหรือนอกพื้นที่งาน
+              แยกพฤติกรรมการใช้งานที่ก่อให้เกิดต้นทุนแฝง
             </p>
-          </div>
+          </motion.div>
 
-          <div className="rounded-lg border p-4">
+          <motion.div variants={item} className="rounded-lg border p-4">
             <div className="mb-1 font-medium">⛽ Fuel Detection</div>
             <p className="text-sm text-gray-500">
               ตรวจจับเหตุการณ์น้ำมันลดผิดปกติ
-              พร้อมบันทึกผลการพิจารณา
-              เพื่อความโปร่งใสและตรวจสอบได้
+              พร้อมระบบบันทึกผลการตรวจสอบอย่างเป็นธรรม
             </p>
-          </div>
+          </motion.div>
 
-          <div className="rounded-lg border p-4">
+          <motion.div variants={item} className="rounded-lg border p-4">
             <div className="mb-1 font-medium">⚙️ Pipeline</div>
             <p className="text-sm text-gray-500">
               ระบบประมวลผลข้อมูลอัตโนมัติ
-              เพื่อให้ข้อมูลอัปเดตสม่ำเสมอ
-              และรองรับการรันย้อนหลัง
+              เพื่อให้ข้อมูลมีความถูกต้องและทันเวลา
             </p>
-          </div>
+          </motion.div>
 
-          <div className="rounded-lg border p-4">
+          <motion.div variants={item} className="rounded-lg border p-4">
             <div className="mb-1 font-medium">🏭 Master Data (Plant)</div>
             <p className="text-sm text-gray-500">
               จัดการข้อมูลสถานที่ปฏิบัติงาน
-              เพื่อเพิ่มความแม่นยำในการวิเคราะห์
-              และลด false positive
+              เพื่อเพิ่มความแม่นยำในการวิเคราะห์ทั้งระบบ
             </p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        {/* Footer note */}
-        <p className="mt-10 text-xs text-gray-400">
-          💡 แนะนำการใช้งาน: เริ่มจาก Fuel Detection → ตรวจสอบ Engine-On →
-          ตรวจ Pipeline หากข้อมูลไม่อัปเดต → ดูแล Master Data ให้ถูกต้อง
-        </p>
-      </div>
+        {/* Executive Note */}
+        <motion.p
+          variants={item}
+          className="mt-10 text-xs text-gray-400"
+        >
+          💡 Fuel Control Center ไม่ใช่แค่ระบบดูข้อมูล
+          แต่เป็นเครื่องมือช่วยผู้บริหาร
+          ควบคุมต้นทุนและยกระดับมาตรฐานการทำงานด้วยข้อมูลจริง
+        </motion.p>
+      </motion.div>
     </main>
   )
 }
