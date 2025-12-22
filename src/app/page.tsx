@@ -1,8 +1,11 @@
 // src/app/page.tsx
-
 "use client"
 
 import { motion } from "framer-motion"
+
+/* ------------------------------
+   Animation Presets (Executive)
+------------------------------ */
 
 const container = {
   hidden: { opacity: 0 },
@@ -14,7 +17,7 @@ const container = {
   },
 }
 
-const item = {
+const fadeUp = {
   hidden: { opacity: 0, y: 16 },
   show: {
     opacity: 1,
@@ -26,9 +29,22 @@ const item = {
   },
 }
 
+const cardHover = {
+  scale: 1.02,
+  boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+  transition: {
+    duration: 0.25,
+    ease: "easeOut",
+  },
+}
+
+/* ------------------------------
+   Page
+------------------------------ */
+
 export default function HomePage() {
   return (
-    <main className="flex min-h-[80vh] items-center justify-center px-6">
+    <main className="flex min-h-[80vh] items-center justify-center bg-white px-6">
       <motion.div
         className="mx-auto max-w-3xl text-center"
         variants={container}
@@ -37,16 +53,16 @@ export default function HomePage() {
       >
         {/* Title */}
         <motion.h1
-          variants={item}
-          className="mb-4 text-4xl font-bold text-blue-600"
+          variants={fadeUp}
+          className="mb-4 text-4xl font-bold tracking-tight text-blue-600"
         >
           ⛽ Fuel Control Center
         </motion.h1>
 
         {/* Executive Intro */}
         <motion.p
-          variants={item}
-          className="mx-auto mb-10 text-base leading-relaxed text-gray-600"
+          variants={fadeUp}
+          className="mx-auto mb-12 max-w-2xl text-base leading-relaxed text-gray-600"
         >
           ระบบศูนย์กลางสำหรับ{" "}
           <span className="font-medium">ตรวจสอบ ควบคุม และวิเคราะห์</span>{" "}
@@ -58,49 +74,76 @@ export default function HomePage() {
         {/* Modules */}
         <motion.div
           variants={container}
-          className="grid gap-4 text-left sm:grid-cols-2"
+          className="grid gap-5 text-left sm:grid-cols-2"
         >
-          <motion.div variants={item} className="rounded-lg border p-4">
-            <div className="mb-1 font-medium">🔥 Engine-On</div>
-            <p className="text-sm text-gray-500">
+          {/* Engine-On */}
+          <motion.div
+            variants={fadeUp}
+            whileHover={cardHover}
+            className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
+          >
+            <div className="mb-2 text-base font-semibold">🔥 Engine-On</div>
+            <p className="text-sm leading-relaxed text-gray-500">
               วิเคราะห์การติดเครื่องเป็นเวลานาน
-              แยกพฤติกรรมการใช้งานที่ก่อให้เกิดต้นทุนแฝง
+              เพื่อควบคุมพฤติกรรมการใช้งานรถ
+              และลดต้นทุนที่ไม่จำเป็น
             </p>
           </motion.div>
 
-          <motion.div variants={item} className="rounded-lg border p-4">
-            <div className="mb-1 font-medium">⛽ Fuel Detection</div>
-            <p className="text-sm text-gray-500">
+          {/* Fuel Detection */}
+          <motion.div
+            variants={fadeUp}
+            whileHover={cardHover}
+            className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
+          >
+            <div className="mb-2 text-base font-semibold">⛽ Fuel Detection</div>
+            <p className="text-sm leading-relaxed text-gray-500">
               ตรวจจับเหตุการณ์น้ำมันลดผิดปกติ
-              พร้อมระบบบันทึกผลการตรวจสอบอย่างเป็นธรรม
+              พร้อมระบบบันทึกผลการตรวจสอบ
+              ที่ตรวจสอบย้อนหลังได้
             </p>
           </motion.div>
 
-          <motion.div variants={item} className="rounded-lg border p-4">
-            <div className="mb-1 font-medium">⚙️ Pipeline</div>
-            <p className="text-sm text-gray-500">
+          {/* Pipeline */}
+          <motion.div
+            variants={fadeUp}
+            whileHover={cardHover}
+            className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
+          >
+            <div className="mb-2 text-base font-semibold">⚙️ Pipeline</div>
+            <p className="text-sm leading-relaxed text-gray-500">
               ระบบประมวลผลข้อมูลอัตโนมัติ
-              เพื่อให้ข้อมูลมีความถูกต้องและทันเวลา
+              เพื่อให้ข้อมูลถูกต้อง ทันเวลา
+              และลดภาระงาน manual
             </p>
           </motion.div>
 
-          <motion.div variants={item} className="rounded-lg border p-4">
-            <div className="mb-1 font-medium">🏭 Master Data (Plant)</div>
-            <p className="text-sm text-gray-500">
+          {/* Master Data */}
+          <motion.div
+            variants={fadeUp}
+            whileHover={cardHover}
+            className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
+          >
+            <div className="mb-2 text-base font-semibold">
+              🏭 Master Data (Plant)
+            </div>
+            <p className="text-sm leading-relaxed text-gray-500">
               จัดการข้อมูลสถานที่ปฏิบัติงาน
-              เพื่อเพิ่มความแม่นยำในการวิเคราะห์ทั้งระบบ
+              เพื่อเพิ่มความแม่นยำของการวิเคราะห์
+              และลดความคลาดเคลื่อนของระบบ
             </p>
           </motion.div>
         </motion.div>
 
-        {/* Executive Note */}
+        {/* Executive Closing */}
         <motion.p
-          variants={item}
-          className="mt-10 text-xs text-gray-400"
+          variants={fadeUp}
+          className="mt-12 text-xs leading-relaxed text-gray-400"
         >
-          💡 Fuel Control Center ไม่ใช่แค่ระบบดูข้อมูล
-          แต่เป็นเครื่องมือช่วยผู้บริหาร
-          ควบคุมต้นทุนและยกระดับมาตรฐานการทำงานด้วยข้อมูลจริง
+          Fuel Control Center คือเครื่องมือเชิงกลยุทธ์
+          ที่ช่วยให้ผู้บริหารควบคุมต้นทุน
+          สร้างมาตรฐานการทำงาน
+          และขับเคลื่อนองค์กรด้วยข้อมูลจริง
         </motion.p>
       </motion.div>
     </main>
