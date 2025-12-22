@@ -273,11 +273,15 @@ export default function FuelDetectionGraph({
       },
       y: {
         min: 0,
+        suggestedMax: 250,  // auto but capped
+
         title: { display: true, text: "ระดับน้ำมัน (ลิตร)" },
       },
       y1: {
         position: "right",
         min: 0,
+        suggestedMax: 100,  // auto but capped
+
         grid: { drawOnChartArea: false },
         title: { display: true, text: "ความเร็ว (กม./ชม.)" },
       },
