@@ -114,8 +114,7 @@ export default function HomePage() {
           variants={fadeUp}
           className="mt-12 text-xs leading-relaxed text-gray-400"
         >
-          Fuel Control Center คือเครื่องมือเชิงกลยุทธ์
-          ที่ช่วยให้ผู้บริหารควบคุมต้นทุน
+          Fuel Control Center คือเครื่องมือ
           สร้างมาตรฐานการทำงาน
           และขับเคลื่อนองค์กรด้วยข้อมูลจริง
         </motion.p>
