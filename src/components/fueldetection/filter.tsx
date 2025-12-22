@@ -8,13 +8,15 @@ interface FuelDetectionFilterProps {
     plateDriver: string
     startDate: string
     endDate: string
-    statuses: string[]      // ✅ multi
+    statuses: string[]          // ✅ multi
     movingOnly: boolean
+    showReviewed: boolean       // ✅ UX toggle
+    showUnreviewed: boolean     // ✅ UX toggle
   }) => void
   isLoading: boolean
 }
 
-export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterProps) => {
+export function FuelDetectionFilter({ query, isLoading }: FuelDetectionFilterProps) {
   const today = new Date()
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)
@@ -24,8 +26,12 @@ export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterPro
 
   const [dateRange, setDateRange] = useState({ from: startDate, to: yesterday })
   const [plateDriver, setPlateDriver] = useState("")
-  const [statuses, setStatuses] = useState<string[]>([]) // ✅
+  const [statuses, setStatuses] = useState<string[]>([]) // empty = all
   const [movingOnly, setMovingOnly] = useState(false)
+
+  // ✅ new UX
+  const [showReviewed, setShowReviewed] = useState(true)
+  const [showUnreviewed, setShowUnreviewed] = useState(true)
 
   const formatDate = (d?: Date) =>
     d
@@ -34,18 +40,13 @@ export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterPro
           .padStart(2, "0")}/${d.getFullYear()}`
       : ""
 
-  const toggleStatus = (status: string) => {
-    setStatuses(prev =>
-      prev.includes(status)
-        ? prev.filter(s => s !== status)
-        : [...prev, status]
-    )
+  const toggleStatus = (s: string) => {
+    setStatuses(prev => (prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]))
   }
 
   const handleApply = () => {
-    if (!plateDriver || !dateRange.from || !dateRange.to) {
-      return alert("โปรดใส่ข้อมูลให้ครบถ้วน")
-    }
+    if (!plateDriver || !dateRange.from || !dateRange.to) return alert("โปรดใส่ข้อมูลให้ครบถ้วน")
+    if (!showReviewed && !showUnreviewed) return alert("ต้องเลือกอย่างน้อย 1 สถานะ (Reviewed/Unreviewed)")
 
     query({
       plateDriver,
@@ -53,62 +54,85 @@ export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterPro
       endDate: formatDate(dateRange.to),
       statuses,
       movingOnly,
+      showReviewed,
+      showUnreviewed,
     })
   }
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm p-4 flex justify-between gap-4 items-center">
-      <div className="flex gap-6 items-start">
-        {/* Date */}
+    <div className="bg-white rounded-xl border shadow-sm p-4 flex flex-col gap-3">
+      <div className="flex flex-wrap gap-4 items-end">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">Date Range</label>
           <DateRange value={dateRange} onChange={setDateRange} />
         </div>
 
-        {/* Plate */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">Plate</label>
           <input
-            className="h-9 w-52 rounded-md border px-2 text-sm"
+            className="h-9 w-56 rounded-md border px-2 text-sm"
             value={plateDriver}
             onChange={e => setPlateDriver(e.target.value)}
             placeholder="71-8623"
           />
         </div>
 
-        {/* Status (multi) */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">สถานะรถ</label>
-          {["รถวิ่ง", "จอดรถ", "ดับเครื่อง"].map(s => (
-            <label key={s} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={statuses.includes(s)}
-                onChange={() => toggleStatus(s)}
-              />
-              {s}
-            </label>
-          ))}
+          <label className="text-xs text-gray-500">สถานะรถ (เลือกได้หลายค่า)</label>
+          <div className="flex flex-wrap gap-2">
+            {["รถวิ่ง", "จอดรถ", "ดับเครื่อง"].map(s => (
+              <label key={s} className="text-sm flex items-center gap-2">
+                <input type="checkbox" checked={statuses.includes(s)} onChange={() => toggleStatus(s)} />
+                {s}
+              </label>
+            ))}
+            <button
+              type="button"
+              className="text-xs underline text-gray-500"
+              onClick={() => setStatuses([])}
+              disabled={isLoading}
+            >
+              clear
+            </button>
+          </div>
         </div>
 
-        {/* movingOnly */}
-        <label className="flex items-center gap-2 text-sm mt-6">
-          <input
-            type="checkbox"
-            checked={movingOnly}
-            onChange={e => setMovingOnly(e.target.checked)}
-          />
-          เคลื่อนที่จริง (ความเร็ว &gt; 0)
+        <label className="text-sm flex items-center gap-2">
+          <input type="checkbox" checked={movingOnly} onChange={e => setMovingOnly(e.target.checked)} />
+          เฉพาะช่วงรถเคลื่อนที่ (speed &gt; 0)
         </label>
+
+        <button
+          onClick={handleApply}
+          disabled={isLoading}
+          className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
+        >
+          {isLoading ? "Loading..." : "Apply"}
+        </button>
       </div>
 
-      <button
-        onClick={handleApply}
-        disabled={isLoading}
-        className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
-      >
-        {isLoading ? "Loading..." : "Apply"}
-      </button>
+      {/* ✅ Reviewed / Unreviewed toggles */}
+      <div className="flex flex-wrap gap-4 items-center text-sm">
+        <div className="font-medium text-gray-700">แสดงช่วง:</div>
+
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showUnreviewed}
+            onChange={e => setShowUnreviewed(e.target.checked)}
+          />
+          🔴 Unreviewed
+        </label>
+
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showReviewed}
+            onChange={e => setShowReviewed(e.target.checked)}
+          />
+          🔵 Reviewed
+        </label>
+      </div>
     </div>
   )
 }
