@@ -34,6 +34,8 @@ interface Props {
   reviews: ReviewRow[]
 }
 
+type Window = { fromIdx: number; toIdx: number }
+
 /* ---------------------------------------
    Component
 --------------------------------------- */
@@ -77,13 +79,18 @@ export default function FuelDetectionGraph({
     [data]
   )
 
-  /* ---------- Reviewed windows → index ranges ---------- */
-  const reviewIndexWindows = useMemo<
-    { fromIdx: number; toIdx: number }[]
-  >(() => {
-    if (!reviews.length || !tsData.length) return []
+  /* ---------------------------------------
+     Build reviewed / unreviewed windows
+  --------------------------------------- */
+  const bandWindows = useMemo<{
+    reviewed: Window[]
+    unreviewed: Window[]
+  }>(() => {
+    if (!tsData.length)
+      return { reviewed: [], unreviewed: [] }
 
-    const flags: boolean[] = tsData.map(ts =>
+    // true = reviewed, false = unreviewed
+    const reviewedFlags: boolean[] = tsData.map(ts =>
       ts == null
         ? false
         : reviews.some(r =>
@@ -96,20 +103,24 @@ export default function FuelDetectionGraph({
           )
     )
 
-    const windows: {
-      fromIdx: number
-      toIdx: number
-    }[] = []
-
-    for (let i = 0; i < flags.length; i++) {
-      if (!flags[i]) continue
-      let j = i
-      while (flags[j + 1]) j++
-      windows.push({ fromIdx: i, toIdx: j })
-      i = j
+    const buildWindows = (flags: boolean[]) => {
+      const out: Window[] = []
+      for (let i = 0; i < flags.length; i++) {
+        if (!flags[i]) continue
+        let j = i
+        while (flags[j + 1]) j++
+        out.push({ fromIdx: i, toIdx: j })
+        i = j
+      }
+      return out
     }
 
-    return windows
+    return {
+      reviewed: buildWindows(reviewedFlags),
+      unreviewed: buildWindows(
+        reviewedFlags.map(v => !v)
+      ),
+    }
   }, [reviews, tsData])
 
   /* ---------- Range selection ---------- */
@@ -176,13 +187,10 @@ export default function FuelDetectionGraph({
         }),
       })
 
-      if (!res.ok) {
-        throw new Error("Save review failed")
-      }
+      if (!res.ok) throw new Error("Save review failed")
 
       alert("✅ บันทึกผลตรวจเรียบร้อย")
 
-      // reset state หลัง save
       setSelStart(null)
       setSelEnd(null)
       setDecision("reviewed_ok")
@@ -198,11 +206,15 @@ export default function FuelDetectionGraph({
   /* ---------- Render ---------- */
   return (
     <div className="space-y-4">
+      <div className="text-sm text-gray-600">
+        🔴 Unreviewed | 🔵 Reviewed | คลิก 2 ครั้งเพื่อเลือกช่วง
+      </div>
+
       <FuelChart
         labels={labels}
         fuelData={fuelData}
         speedData={speedData}
-        reviewIndexWindows={reviewIndexWindows}
+        bandWindows={bandWindows}
         onSelectIndex={handleSelectIndex}
       />
 

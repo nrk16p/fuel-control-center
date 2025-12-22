@@ -1,31 +1,41 @@
 import { Chart } from "chart.js"
 
+type Window = { fromIdx: number; toIdx: number }
+
 export const reviewedBandsPlugin = {
   id: "reviewedBands",
   beforeDraw(chart: any, _args: any, opts: any) {
-    const windows: Array<{ fromIdx: number; toIdx: number }> =
-      opts?.windows || []
-    if (!windows.length) return
+    const reviewed: Window[] = opts?.reviewed || []
+    const unreviewed: Window[] = opts?.unreviewed || []
+    if (!reviewed.length && !unreviewed.length) return
 
     const { ctx, chartArea, scales } = chart
     const x = scales.x
     if (!x) return
 
-    ctx.save()
-    ctx.fillStyle = "rgba(59,130,246,0.08)"
-    for (const w of windows) {
-      const x1 = x.getPixelForValue(w.fromIdx)
-      const x2 = x.getPixelForValue(w.toIdx)
-      const left = Math.max(chartArea.left, Math.min(x1, x2))
-      const right = Math.min(chartArea.right, Math.max(x1, x2))
-      ctx.fillRect(
-        left,
-        chartArea.top,
-        right - left,
-        chartArea.bottom - chartArea.top
-      )
+    const paint = (windows: Window[], fillStyle: string) => {
+      if (!windows.length) return
+      ctx.save()
+      ctx.fillStyle = fillStyle
+      for (const w of windows) {
+        const x1 = x.getPixelForValue(w.fromIdx)
+        const x2 = x.getPixelForValue(w.toIdx)
+        const left = Math.max(chartArea.left, Math.min(x1, x2))
+        const right = Math.min(chartArea.right, Math.max(x1, x2))
+        ctx.fillRect(
+          left,
+          chartArea.top,
+          right - left,
+          chartArea.bottom - chartArea.top
+        )
+      }
+      ctx.restore()
     }
-    ctx.restore()
+
+    // 🔴 Unreviewed (light red)
+    paint(unreviewed, "rgba(239,68,68,0.07)")
+    // 🔵 Reviewed (light blue)
+    paint(reviewed, "rgba(59,130,246,0.08)")
   },
 }
 
