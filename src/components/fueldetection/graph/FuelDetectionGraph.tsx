@@ -4,21 +4,68 @@ import { useMemo, useState } from "react"
 import { FuelChart } from "./FuelChart"
 import { ReviewPanel } from "./ReviewPanel"
 import { toDateFromThai, overlap } from "@/lib/dt-th"
+import type { FuelDetectionData } from "@/lib/types"
 
-export default function FuelDetectionGraph({ data, reviews }: any) {
+/* ---------------------------------------
+   Types
+--------------------------------------- */
+export type ReviewRow = {
+  _id: unknown
+  plate: string
+  start_ts: number
+  end_ts: number
+  decision: string
+  note?: string
+  reviewer?: string
+  created_at?: string
+  fuel_start?: number
+  fuel_end?: number
+  fuel_diff?: number
+}
+
+type Decision =
+  | "reviewed_ok"
+  | "reviewed_suspicious"
+  | "false_positive"
+  | "need_follow_up"
+
+interface Props {
+  data: FuelDetectionData[]
+  reviews: ReviewRow[]
+}
+
+/* ---------------------------------------
+   Component
+--------------------------------------- */
+export default function FuelDetectionGraph({
+  data,
+  reviews,
+}: Props) {
   const [selStart, setSelStart] = useState<number | null>(null)
   const [selEnd, setSelEnd] = useState<number | null>(null)
-  const [decision, setDecision] = useState("reviewed_ok")
-  const [note, setNote] = useState("")
-  const [saving, setSaving] = useState(false)
+  const [decision, setDecision] =
+    useState<Decision>("reviewed_ok")
+  const [note, setNote] = useState<string>("")
+  const [saving, setSaving] = useState<boolean>(false)
 
-  const labels = useMemo(
-    () => data.map((d: any) => `${d.วันที่} ${d.เวลา}`),
+  /* ---------------------------------------
+     Data prep
+  --------------------------------------- */
+  const labels = useMemo<string[]>(
+    () => data.map(d => `${d.วันที่} ${d.เวลา}`),
     [data]
   )
-  const fuelData = useMemo(() => data.map((d: any) => d.น้ำมัน ?? 0), [data])
-  const speedData = useMemo(
-    () => data.map((d: any) => d["ความเร็ว(กม./ชม.)"] ?? 0),
+
+  const fuelData = useMemo<number[]>(
+    () => data.map(d => Number(d.น้ำมัน ?? 0)),
+    [data]
+  )
+
+  const speedData = useMemo<number[]>(
+    () =>
+      data.map(d =>
+        Number(d["ความเร็ว(กม./ชม.)"] ?? 0)
+      ),
     [data]
   )
 
@@ -31,23 +78,38 @@ export default function FuelDetectionGraph({ data, reviews }: any) {
     [data]
   )
 
-  const reviewIndexWindows = useMemo(() => {
-    if (!reviews?.length) return []
+  /* ---------------------------------------
+     Reviewed windows → index ranges
+  --------------------------------------- */
+  const reviewIndexWindows = useMemo<
+    { fromIdx: number; toIdx: number }[]
+  >(() => {
+    if (!reviews.length || !tsData.length) return []
 
-    const flags: (number | null)[] = tsData.map((ts, i) =>
-      reviews.some((r: any) =>
-        overlap(ts, ts, r.start_ts, r.end_ts)
-      )
-        ? i
-        : null
+    const flags: boolean[] = tsData.map(ts =>
+      ts == null
+        ? false
+        : reviews.some(r =>
+            overlap(
+              ts,
+              ts,
+              r.start_ts,
+              r.end_ts
+            )
+          )
     )
 
-    const windows: { fromIdx: number; toIdx: number }[] = []
+    const windows: {
+      fromIdx: number
+      toIdx: number
+    }[] = []
 
     for (let i = 0; i < flags.length; i++) {
-      if (flags[i] == null) continue
+      if (!flags[i]) continue
+
       let j = i
-      while (flags[j + 1] != null) j++
+      while (flags[j + 1]) j++
+
       windows.push({ fromIdx: i, toIdx: j })
       i = j
     }
@@ -55,18 +117,49 @@ export default function FuelDetectionGraph({ data, reviews }: any) {
     return windows
   }, [reviews, tsData])
 
-  const handleSelect = (idx: number) => {
+  /* ---------------------------------------
+     Range selection
+  --------------------------------------- */
+  const handleSelectIndex = (idx: number) => {
     if (selStart == null || selEnd != null) {
       setSelStart(idx)
       setSelEnd(null)
-    } else setSelEnd(idx)
+    } else {
+      setSelEnd(idx)
+    }
   }
 
-  const selected =
-    selStart != null && selEnd != null
-      ? { plate: data[selStart].ทะเบียนพาหนะ }
-      : null
+  const selected = useMemo(() => {
+    if (
+      selStart == null ||
+      selEnd == null ||
+      !data[selStart] ||
+      !data[selEnd]
+    )
+      return null
 
+    const a = data[selStart]
+    const b = data[selEnd]
+
+    const fuelStart = Number(a.น้ำมัน ?? 0)
+    const fuelEnd = Number(b.น้ำมัน ?? 0)
+
+    return {
+      plate: a.ทะเบียนพาหนะ,
+      startDate: a.วันที่,
+      startTime: a.เวลา,
+      endDate: b.วันที่,
+      endTime: b.เวลา,
+      fuelStart,
+      fuelEnd,
+      fuelDiff: fuelStart - fuelEnd,
+      durationMin: Math.abs(selEnd - selStart) * 5,
+    }
+  }, [selStart, selEnd, data])
+
+  /* ---------------------------------------
+     Render
+  --------------------------------------- */
   return (
     <div className="space-y-4">
       <FuelChart
@@ -74,18 +167,21 @@ export default function FuelDetectionGraph({ data, reviews }: any) {
         fuelData={fuelData}
         speedData={speedData}
         reviewIndexWindows={reviewIndexWindows}
-        onSelectIndex={handleSelect}
+        onSelectIndex={handleSelectIndex}
       />
 
       {selected && (
         <ReviewPanel
           selected={selected}
-          decision={decision as any}
+          decision={decision}
           note={note}
           saving={saving}
-          onDecisionChange={setDecision as any}
+          onDecisionChange={setDecision}
           onNoteChange={setNote}
-          onSave={() => {}}
+          onSave={() => {
+            /* hook saveReview later */
+            setSaving(false)
+          }}
         />
       )}
     </div>
