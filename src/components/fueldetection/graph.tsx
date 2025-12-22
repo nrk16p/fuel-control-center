@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import {
   Chart as ChartJS,
   registerables,
+  type ChartData,
   type ChartOptions,
 } from "chart.js"
 import zoomPlugin from "chartjs-plugin-zoom"
@@ -36,20 +37,16 @@ export default function FuelDetectionGraph({
 }) {
   const [showMockData, setShowMockData] = useState(false)
 
-  /* ---------------- Mock (optional) ---------------- */
+  /* ---------------- Mock Data ---------------- */
   const mockData: FuelDetectionData[] = [
     { _id: "1", วันที่: "14/12/2025", เวลา: "08:00", ทะเบียนพาหนะ: "71-8623", น้ำมัน: 200, "ความเร็ว(กม./ชม.)": 0 },
     { _id: "2", วันที่: "14/12/2025", เวลา: "12:00", ทะเบียนพาหนะ: "71-8623", น้ำมัน: 180, "ความเร็ว(กม./ชม.)": 45 },
     { _id: "3", วันที่: "14/12/2025", เวลา: "18:00", ทะเบียนพาหนะ: "71-8623", น้ำมัน: 160, "ความเร็ว(กม./ชม.)": 30 },
-
-    { _id: "4", วันที่: "15/12/2025", เวลา: "08:00", ทะเบียนพาหนะ: "71-8623", น้ำมัน: 155, "ความเร็ว(กม./ชม.)": 0 },
-    { _id: "5", วันที่: "15/12/2025", เวลา: "12:00", ทะเบียนพาหนะ: "71-8623", น้ำมัน: 140, "ความเร็ว(กม./ชม.)": 55 },
-    { _id: "6", วันที่: "15/12/2025", เวลา: "18:00", ทะเบียนพาหนะ: "71-8623", น้ำมัน: 120, "ความเร็ว(กม./ชม.)": 40 },
   ]
 
   const displayData = showMockData ? mockData : data
 
-  /* ---------------- Prepare data ---------------- */
+  /* ---------------- Prepare Data ---------------- */
   const labels = useMemo(
     () => displayData.map(d => `${d.วันที่} ${d.เวลา}`),
     [displayData]
@@ -65,12 +62,12 @@ export default function FuelDetectionGraph({
     [displayData]
   )
 
-  /* ---------------- Chart data ---------------- */
-  const chartData = {
+  /* ---------------- Chart Data (MIXED) ---------------- */
+  const chartData: ChartData<"bar" | "line", number[], string> = {
     labels,
     datasets: [
       {
-        type: "line" as const,
+        type: "line",
         label: "ระดับน้ำมัน (ลิตร)",
         data: fuelData,
         yAxisID: "y",
@@ -78,12 +75,12 @@ export default function FuelDetectionGraph({
         backgroundColor: "rgb(59,130,246)",
         borderWidth: 2,
         tension: 0.25,
-        pointRadius: 0,        // ❌ no marker
+        pointRadius: 0,
         pointHoverRadius: 4,
         order: 1,
       },
       {
-        type: "bar" as const,
+        type: "bar",
         label: "ความเร็ว (กม./ชม.)",
         data: speedData,
         yAxisID: "y1",
@@ -94,8 +91,8 @@ export default function FuelDetectionGraph({
     ],
   }
 
-  /* ---------------- Options (TYPE SAFE) ---------------- */
-  const options: ChartOptions<"bar"> = {
+  /* ---------------- Options (MIXED TYPE SAFE) ---------------- */
+  const options: ChartOptions<"bar" | "line"> = {
     responsive: true,
     maintainAspectRatio: false,
     interaction: {
@@ -123,11 +120,11 @@ export default function FuelDetectionGraph({
         zoom: {
           wheel: { enabled: true },
           pinch: { enabled: true },
-          mode: "x",     // ✅ TS OK
+          mode: "x",
         },
         pan: {
           enabled: true,
-          mode: "x",     // ✅ TS OK
+          mode: "x",
         },
       },
     },
@@ -137,9 +134,6 @@ export default function FuelDetectionGraph({
           autoSkip: true,
           maxTicksLimit: 10,
           maxRotation: 0,
-          font: {
-            size: 11,
-          },
         },
         title: {
           display: true,
@@ -190,6 +184,7 @@ export default function FuelDetectionGraph({
       </label>
 
       <div className="h-[500px] rounded-xl border bg-white p-4 shadow-sm">
+        {/* 🔑 IMPORTANT: type ต้องเป็น union */}
         <Chart type="bar" data={chartData} options={options} />
       </div>
     </div>
