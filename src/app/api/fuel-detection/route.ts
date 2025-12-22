@@ -96,6 +96,10 @@ export async function GET(request: Request) {
         `Data sampled every 5 minutes. Original: ${originalLength}, Sampled: ${jobs.length}`
       )
     }
+    // 🔥 IMPORTANT: แก้ปัญหา "รถวิ่งแต่ speed = 0" จาก sampling
+    if (status === "รถวิ่ง") {
+      jobs = jobs.filter(j => j["ความเร็ว(กม./ชม.)"] > 0)
+    }
 
     console.log("Fetched Jobs:", jobs.length)
 
