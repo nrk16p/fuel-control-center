@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { FuelChart } from "./FuelChart"
-import { ReviewPanel } from "./ReviewPanel"
+import { SuspiciousCaseCard } from "./SuspiciousCaseCard"
 import { toDateFromThai, overlap } from "@/lib/dt-th"
 import type { FuelDetectionData } from "@/lib/types"
 
@@ -14,6 +14,8 @@ export type ReviewRow = {
   end_ts: number
   decision: string
   note?: string
+  reviewer?: string
+  fuel_diff?: number
 }
 
 type Window = { fromIdx: number; toIdx: number }
@@ -28,9 +30,7 @@ export default function FuelDetectionGraph({
   data,
   reviews,
 }: Props) {
-  const [selStart, setSelStart] = useState<number | null>(null)
-  const [selEnd, setSelEnd] = useState<number | null>(null)
-
+  /* ---------- Data prep ---------- */
   const labels = useMemo(
     () => data.map(d => `${d.วันที่} ${d.เวลา}`),
     [data]
@@ -81,18 +81,19 @@ export default function FuelDetectionGraph({
     }
   }, [reviews, tsData])
 
-  /* ---------- suspicious highlight ---------- */
-  const suspiciousWindows = useMemo<Window[]>(() => {
-    const suspicious = reviews.filter(
-      r => r.decision === "reviewed_suspicious"
-    )
+  /* ---------- suspicious windows ---------- */
+  const suspiciousReviews = useMemo(
+    () => reviews.filter(r => r.decision === "reviewed_suspicious"),
+    [reviews]
+  )
 
-    if (!suspicious.length) return []
+  const suspiciousWindows = useMemo<Window[]>(() => {
+    if (!suspiciousReviews.length) return []
 
     const flags = tsData.map(ts =>
       ts == null
         ? false
-        : suspicious.some(r =>
+        : suspiciousReviews.some(r =>
             overlap(ts, ts, r.start_ts, r.end_ts)
           )
     )
@@ -106,44 +107,49 @@ export default function FuelDetectionGraph({
       i = j
     }
     return out
-  }, [reviews, tsData])
+  }, [suspiciousReviews, tsData])
 
-  const handleSelectIndex = (idx: number) => {
-    if (selStart == null || selEnd != null) {
-      setSelStart(idx)
-      setSelEnd(null)
-    } else {
-      setSelEnd(idx)
-    }
-  }
-
+  /* ---------- Render ---------- */
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="text-sm text-gray-600">
         ⚪ Unreviewed | 🔵 Reviewed | 🔴 ลดลงผิดปกติ
       </div>
 
+      {/* Chart */}
       <FuelChart
         labels={labels}
         fuelData={fuelData}
         speedData={speedData}
         bandWindows={bandWindows}
         suspiciousWindows={suspiciousWindows}
-        onSelectIndex={handleSelectIndex}
+        onSelectIndex={() => {}}
       />
 
-      {/* ReviewPanel เดิมยังใช้ได้ ถ้าต้องการ */}
-      {selStart != null && selEnd != null && (
-        <ReviewPanel
-          selected={{}}
-          decision="reviewed_suspicious"
-          note=""
-          saving={false}
-          onDecisionChange={() => {}}
-          onNoteChange={() => {}}
-          onSave={() => {}}
-        />
-      )}
+      {/* Suspicious Cards */}
+      <div className="space-y-3">
+        <div className="font-semibold text-red-700">
+          ⚠️ Suspicious cases ({suspiciousReviews.length})
+        </div>
+
+        {suspiciousReviews.map(r => (
+          <SuspiciousCaseCard
+            key={String(r._id)}
+            plate={r.plate}
+            startTs={r.start_ts}
+            endTs={r.end_ts}
+            fuelDiff={r.fuel_diff}
+            note={r.note}
+            reviewer={r.reviewer}
+          />
+        ))}
+
+        {suspiciousReviews.length === 0 && (
+          <div className="text-sm text-gray-500">
+            ไม่มีเคสลดลงผิดปกติในช่วงเวลาที่เลือก
+          </div>
+        )}
+      </div>
     </div>
   )
 }
