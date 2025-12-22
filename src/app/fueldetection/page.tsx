@@ -167,7 +167,7 @@ export default function FuelDetectionPage() {
     <div className="p-6 space-y-4">
       <h1 className="text-2xl font-bold">
         ⛽ Fuel Detection{" "}
-        <span className="text-gray-500">(Review-aware)</span>
+        <span className="text-gray-500">(รายคันรายวัน)</span>
       </h1>
 
       {/* 🔍 Filter */}
