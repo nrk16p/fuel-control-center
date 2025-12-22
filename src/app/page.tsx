@@ -1,10 +1,67 @@
+// src/app/page.tsx
+
 export default function HomePage() {
   return (
-    <div className="flex flex-col items-center justify-center h-[80vh] text-center space-y-4">
-      <h1 className="text-4xl font-bold text-blue-600">⛽ Fuel Control Center</h1>
-      <p className="text-gray-600">
-        Welcome to your real-time fuel management system.
-      </p>
-    </div>
+    <main className="flex min-h-[80vh] items-center justify-center px-6">
+      <div className="mx-auto max-w-3xl text-center">
+        {/* Title */}
+        <h1 className="mb-4 text-4xl font-bold text-blue-600">
+          ⛽ Fuel Control Center
+        </h1>
+
+        {/* Introduction */}
+        <p className="mx-auto mb-10 text-base leading-relaxed text-gray-600">
+          ศูนย์กลางสำหรับ <span className="font-medium">ตรวจสอบ ควบคุม และวิเคราะห์</span>{" "}
+          การใช้น้ำมันและพฤติกรรมรถ
+          เพื่อช่วยให้ทีมปฏิบัติการตัดสินใจจากข้อมูลจริง
+          ลดความสูญเสีย และตรวจสอบย้อนหลังได้อย่างเป็นระบบ
+        </p>
+
+        {/* Modules */}
+        <div className="grid gap-4 text-left sm:grid-cols-2">
+          <div className="rounded-lg border p-4">
+            <div className="mb-1 font-medium">🔥 Engine-On</div>
+            <p className="text-sm text-gray-500">
+              วิเคราะห์การติดเครื่องเป็นเวลานาน
+              แยกกรณีจอดติดเครื่อง เคลื่อนที่ช้า
+              และอยู่ในหรือนอกพื้นที่งาน
+            </p>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <div className="mb-1 font-medium">⛽ Fuel Detection</div>
+            <p className="text-sm text-gray-500">
+              ตรวจจับเหตุการณ์น้ำมันลดผิดปกติ
+              พร้อมบันทึกผลการพิจารณา
+              เพื่อความโปร่งใสและตรวจสอบได้
+            </p>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <div className="mb-1 font-medium">⚙️ Pipeline</div>
+            <p className="text-sm text-gray-500">
+              ระบบประมวลผลข้อมูลอัตโนมัติ
+              เพื่อให้ข้อมูลอัปเดตสม่ำเสมอ
+              และรองรับการรันย้อนหลัง
+            </p>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <div className="mb-1 font-medium">🏭 Master Data (Plant)</div>
+            <p className="text-sm text-gray-500">
+              จัดการข้อมูลสถานที่ปฏิบัติงาน
+              เพื่อเพิ่มความแม่นยำในการวิเคราะห์
+              และลด false positive
+            </p>
+          </div>
+        </div>
+
+        {/* Footer note */}
+        <p className="mt-10 text-xs text-gray-400">
+          💡 แนะนำการใช้งาน: เริ่มจาก Fuel Detection → ตรวจสอบ Engine-On →
+          ตรวจ Pipeline หากข้อมูลไม่อัปเดต → ดูแล Master Data ให้ถูกต้อง
+        </p>
+      </div>
+    </main>
   )
 }
