@@ -9,6 +9,7 @@ interface FuelDetectionFilterProps {
     startDate: string
     endDate: string
     status: string
+    movingOnly: boolean
   }) => void
   isLoading: boolean
 }
@@ -21,13 +22,10 @@ export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterPro
   const startDate = new Date(yesterday)
   startDate.setDate(yesterday.getDate() - 8)
 
-  const [dateRange, setDateRange] = useState({
-    from: startDate,
-    to: yesterday,
-  })
-
-  const [selectedPlateDriver, setSelectedPlateDriver] = useState("")
-  const [status, setStatus] = useState<string>("all")
+  const [dateRange, setDateRange] = useState({ from: startDate, to: yesterday })
+  const [plateDriver, setPlateDriver] = useState("")
+  const [status, setStatus] = useState("all")
+  const [movingOnly, setMovingOnly] = useState(false)
 
   const formatDate = (d?: Date) =>
     d
@@ -36,86 +34,71 @@ export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterPro
           .padStart(2, "0")}/${d.getFullYear()}`
       : ""
 
-  const handleReset = () => {
-    setDateRange({ from: startDate, to: yesterday })
-    setSelectedPlateDriver("")
-    setStatus("all")
-  }
-
   const handleApply = () => {
-    if (!dateRange.from || !dateRange.to || selectedPlateDriver === "") {
+    if (!plateDriver || !dateRange.from || !dateRange.to) {
       return alert("โปรดใส่ข้อมูลให้ครบถ้วน")
     }
 
     query({
-      plateDriver: selectedPlateDriver,
+      plateDriver,
       startDate: formatDate(dateRange.from),
       endDate: formatDate(dateRange.to),
-      status, // ✅ ส่งสถานะจริงจาก DB
+      status,
+      movingOnly, // ✅ ส่งไป BE
     })
   }
 
   return (
     <div className="bg-white rounded-xl border shadow-sm p-4 flex justify-between gap-4 items-center">
-      {/* LEFT */}
       <div className="flex gap-4 items-start">
-        {/* Date */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">Date Range</label>
-          <DateRange
-            value={dateRange}
-            onChange={setDateRange}
-            placeholder="Select date range"
-            className="h-9 rounded-md border bg-white px-3 py-1 text-sm shadow-xs"
-          />
+          <DateRange value={dateRange} onChange={setDateRange} />
         </div>
 
-        {/* Plate */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">Plate / Driver</label>
           <input
-            type="text"
-            className="h-9 w-64 rounded-md border bg-white px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2"
-            placeholder="Search plate or driver..."
-            value={selectedPlateDriver}
-            onChange={(e) => setSelectedPlateDriver(e.target.value)}
+            className="h-9 w-60 rounded-md border px-2 text-sm"
+            value={plateDriver}
+            onChange={e => setPlateDriver(e.target.value)}
+            placeholder="71-8623"
           />
         </div>
 
-        {/* Status (ใช้ค่าจาก DB  */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">สถานะรถ</label>
           <select
-            className="h-9 w-40 rounded-md border bg-white px-2 text-sm shadow-xs"
+            className="h-9 w-40 rounded-md border px-2 text-sm"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={e => setStatus(e.target.value)}
           >
             <option value="all">ทั้งหมด</option>
             <option value="รถวิ่ง">รถวิ่ง</option>
             <option value="ดับเครื่อง">ดับเครื่อง</option>
-            <option value="จอดรถ">จอดรถ</option>
+            <option value="จอด">จอด</option>
+            <option value="เดินเครื่อง">เดินเครื่อง</option>
           </select>
         </div>
+
+        {/* ✅ Separate filter */}
+        <label className="flex items-center gap-2 text-sm mt-6">
+          <input
+            type="checkbox"
+            checked={movingOnly}
+            onChange={e => setMovingOnly(e.target.checked)}
+          />
+          แสดงเฉพาะช่วงรถเคลื่อนที่ (ความเร็ว &gt; 0)
+        </label>
       </div>
 
-      {/* RIGHT */}
-      <div className="flex gap-2 items-center">
-        <button
-          onClick={handleApply}
-          disabled={isLoading}
-          className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 disabled:opacity-50"
-        >
-          {isLoading ? "Loading..." : "Apply"}
-        </button>
-
-        <button
-          onClick={handleReset}
-          disabled={isLoading}
-          className="h-9 px-4 rounded-md border text-sm font-medium flex items-center gap-2 disabled:opacity-50"
-        >
-          Reset
-        </button>
-      </div>
+      <button
+        onClick={handleApply}
+        disabled={isLoading}
+        className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
+      >
+        {isLoading ? "Loading..." : "Apply"}
+      </button>
     </div>
   )
 }

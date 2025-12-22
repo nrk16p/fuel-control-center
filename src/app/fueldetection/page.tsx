@@ -6,12 +6,12 @@ import { FuelDetectionFilter } from "@/components/fueldetection/filter"
 import type { FuelDetectionData } from "@/lib/types"
 
 /* ===============================
-   ✅ Client-only Graph (สำคัญมาก)
+   ✅ Client-only Graph
 ================================ */
 const FuelDetectionGraph = dynamic(
   () => import("@/components/fueldetection/graph"),
   {
-    ssr: false, // 🔥 กัน window is not defined
+    ssr: false,
     loading: () => (
       <div className="rounded-xl border bg-white p-6 shadow-sm">
         <div className="h-5 w-48 rounded bg-gray-200 mb-4 animate-pulse" />
@@ -31,27 +31,50 @@ const FuelDetectionGraph = dynamic(
 
 export default function FuelDetectionPage() {
   const [data, setData] = useState<FuelDetectionData[]>([])
-  const [loading, setLoading] = useState<boolean>(false)
+  const [loading, setLoading] = useState(false)
 
+  /* --------------------------------------------------
+     🔍 Receive FULL filter from Filter component
+  -------------------------------------------------- */
   const handleQueryApply = async (filters: {
     plateDriver: string
     startDate: string
     endDate: string
+    status: string
+    movingOnly: boolean
   }) => {
     setLoading(true)
 
     try {
-      if (!filters.plateDriver || !filters.startDate || !filters.endDate) {
+      const {
+        plateDriver,
+        startDate,
+        endDate,
+        status,
+        movingOnly,
+      } = filters
+
+      if (!plateDriver || !startDate || !endDate) {
         setData([])
         return
       }
 
+      /* ---------------- Build query params ---------------- */
       const params = new URLSearchParams({
-        plateDriver: filters.plateDriver,
-        startDate: filters.startDate,
-        endDate: filters.endDate,
+        plateDriver,
+        startDate,
+        endDate,
       })
 
+      if (status && status !== "all") {
+        params.append("status", status)
+      }
+
+      if (movingOnly) {
+        params.append("movingOnly", "true")
+      }
+
+      /* ---------------- Fetch ---------------- */
       const res = await fetch(
         `/api/fuel-detection?${params.toString()}`,
         {
@@ -64,11 +87,15 @@ export default function FuelDetectionPage() {
         throw new Error("Failed to fetch fuel detection data")
       }
 
-      const json = await res.json()
-      console.log("Fetched Data:", json)
+      const json: FuelDetectionData[] = await res.json()
+      console.log("Fetched Data:", {
+        count: json.length,
+        sample: json.slice(0, 3),
+      })
+
       setData(json)
     } catch (err) {
-      console.error(err)
+      console.error("Fuel detection fetch error:", err)
       alert("Error fetching data")
     } finally {
       setLoading(false)
@@ -77,7 +104,9 @@ export default function FuelDetectionPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">⛽ Fuel Detection (รายคัน)</h1>
+      <h1 className="text-2xl font-bold">
+        ⛽ Fuel Detection <span className="text-gray-500">(รายคัน)</span>
+      </h1>
 
       {/* 🔍 Filter */}
       <FuelDetectionFilter
