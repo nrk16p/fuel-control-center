@@ -248,7 +248,7 @@ export default function FuelDetectionGraph({
           saving={saving}
           onDecisionChange={setDecision}
           onNoteChange={setNote}
-          onSave={saveReview}   {/* ✅ FIX */}
+          onSave={saveReview}  
         />
       )}
     </div>
