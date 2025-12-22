@@ -29,19 +29,26 @@ export default function FuelDetectionGraph({ data, reviews }: any) {
 
   const reviewIndexWindows = useMemo(() => {
     if (!reviews?.length) return []
-    return tsData
-      .map((ts: number, i: number) =>
-        reviews.some((r: any) => overlap(ts, ts, r.start_ts, r.end_ts))
-          ? i
-          : null
+
+    const flags: (number | null)[] = tsData.map((ts, i) =>
+      reviews.some((r: any) =>
+        overlap(ts, ts, r.start_ts, r.end_ts)
       )
-      .reduce((acc: any[], v, i, arr) => {
-        if (v == null || arr[i - 1] != null) return acc
-        let j = i
-        while (arr[j + 1] != null) j++
-        acc.push({ fromIdx: i, toIdx: j })
-        return acc
-      }, [])
+        ? i
+        : null
+    )
+
+    const windows: { fromIdx: number; toIdx: number }[] = []
+
+    for (let i = 0; i < flags.length; i++) {
+      if (flags[i] == null) continue
+      let j = i
+      while (flags[j + 1] != null) j++
+      windows.push({ fromIdx: i, toIdx: j })
+      i = j
+    }
+
+    return windows
   }, [reviews, tsData])
 
   const handleSelect = (idx: number) => {
