@@ -23,18 +23,21 @@ const fadeUp: Variants = {
     y: 0,
     transition: {
       duration: 0.5,
-      ease: [0.16, 1, 0.3, 1], // ✅ correct easing
+      ease: [0.16, 1, 0.3, 1],
     },
   },
 }
 
+// ✅ hover style only (NO transition here)
 const cardHover = {
   scale: 1.02,
   boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-  transition: {
-    duration: 0.25,
-    ease: [0.16, 1, 0.3, 1], // ✅ correct easing
-  },
+}
+
+// ✅ shared transition (typed-safe)
+const hoverTransition = {
+  duration: 0.25,
+  ease: [0.16, 1, 0.3, 1],
 }
 
 /* ------------------------------
@@ -75,59 +78,35 @@ export default function HomePage() {
           variants={container}
           className="grid gap-5 text-left sm:grid-cols-2"
         >
-          <motion.div
-            variants={fadeUp}
-            whileHover={cardHover}
-            className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
-          >
-            <div className="mb-2 text-base font-semibold">🔥 Engine-On</div>
-            <p className="text-sm leading-relaxed text-gray-500">
-              วิเคราะห์การติดเครื่องเป็นเวลานาน
-              เพื่อควบคุมพฤติกรรมการใช้งานรถ
-              และลดต้นทุนที่ไม่จำเป็น
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={fadeUp}
-            whileHover={cardHover}
-            className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
-          >
-            <div className="mb-2 text-base font-semibold">⛽ Fuel Detection</div>
-            <p className="text-sm leading-relaxed text-gray-500">
-              ตรวจจับเหตุการณ์น้ำมันลดผิดปกติ
-              พร้อมระบบบันทึกผลการตรวจสอบ
-              ที่ตรวจสอบย้อนหลังได้
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={fadeUp}
-            whileHover={cardHover}
-            className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
-          >
-            <div className="mb-2 text-base font-semibold">⚙️ Pipeline</div>
-            <p className="text-sm leading-relaxed text-gray-500">
-              ระบบประมวลผลข้อมูลอัตโนมัติ
-              เพื่อให้ข้อมูลถูกต้อง ทันเวลา
-              และลดภาระงาน manual
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={fadeUp}
-            whileHover={cardHover}
-            className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
-          >
-            <div className="mb-2 text-base font-semibold">
-              🏭 Master Data (Plant)
-            </div>
-            <p className="text-sm leading-relaxed text-gray-500">
-              จัดการข้อมูลสถานที่ปฏิบัติงาน
-              เพื่อเพิ่มความแม่นยำของการวิเคราะห์
-              และลดความคลาดเคลื่อนของระบบ
-            </p>
-          </motion.div>
+          {[
+            {
+              title: "🔥 Engine-On",
+              desc: "วิเคราะห์การติดเครื่องเป็นเวลานาน เพื่อควบคุมพฤติกรรมและลดต้นทุนที่ไม่จำเป็น",
+            },
+            {
+              title: "⛽ Fuel Detection",
+              desc: "ตรวจจับเหตุการณ์น้ำมันลดผิดปกติ พร้อมระบบบันทึกผลการตรวจสอบที่ตรวจสอบย้อนหลังได้",
+            },
+            {
+              title: "⚙️ Pipeline",
+              desc: "ระบบประมวลผลข้อมูลอัตโนมัติ เพื่อให้ข้อมูลถูกต้อง ทันเวลา และลดงาน manual",
+            },
+            {
+              title: "🏭 Master Data (Plant)",
+              desc: "จัดการข้อมูลสถานที่ปฏิบัติงาน เพื่อเพิ่มความแม่นยำและลดความคลาดเคลื่อนของระบบ",
+            },
+          ].map((m) => (
+            <motion.div
+              key={m.title}
+              variants={fadeUp}
+              whileHover={cardHover}
+              transition={hoverTransition}
+              className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
+            >
+              <div className="mb-2 text-base font-semibold">{m.title}</div>
+              <p className="text-sm leading-relaxed text-gray-500">{m.desc}</p>
+            </motion.div>
+          ))}
         </motion.div>
 
         {/* Executive Closing */}
