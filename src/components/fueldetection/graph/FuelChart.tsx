@@ -11,8 +11,14 @@ import zoomPlugin from "chartjs-plugin-zoom"
 import { Chart } from "react-chartjs-2"
 import "./reviewedBandsPlugin"
 
+/* ---------------------------------------
+   Register Chart.js
+--------------------------------------- */
 ChartJS.register(...registerables, zoomPlugin)
 
+/* ---------------------------------------
+   Types
+--------------------------------------- */
 type Window = { fromIdx: number; toIdx: number }
 
 interface Props {
@@ -23,10 +29,14 @@ interface Props {
     reviewed: Window[]
     unreviewed: Window[]
   }
+  /** 🔴 highlight สำหรับ reviewed_suspicious */
   suspiciousWindows: Window[]
   onSelectIndex: (idx: number) => void
 }
 
+/* ---------------------------------------
+   Component
+--------------------------------------- */
 export function FuelChart({
   labels,
   fuelData,
@@ -46,12 +56,14 @@ export function FuelChart({
         borderWidth: 2,
         tension: 0.25,
         pointRadius: 0,
+        order: 1,
       },
       {
         type: "bar",
         label: "ความเร็ว (กม./ชม.)",
         data: speedData,
         yAxisID: "y1",
+        order: 2,
       },
     ],
   }
@@ -59,8 +71,9 @@ export function FuelChart({
   const options: ChartOptions<"bar" | "line"> = {
     responsive: true,
     maintainAspectRatio: false,
-    onClick: (_e, els) => {
-      const idx = els?.[0]?.index
+    interaction: { mode: "index", intersect: false },
+    onClick: (_evt, elements) => {
+      const idx = elements?.[0]?.index
       if (idx != null) onSelectIndex(idx)
     },
     plugins: {
@@ -72,18 +85,42 @@ export function FuelChart({
               : `🚗 ${ctx.parsed.y} กม./ชม.`,
         },
       },
+      zoom: {
+        zoom: {
+          wheel: { enabled: true },
+          pinch: { enabled: true },
+          mode: "x",
+        },
+        pan: { enabled: true, mode: "x" },
+      },
+
+      /* ---------------------------------------
+         🔴 reviewed / unreviewed / suspicious
+      --------------------------------------- */
       reviewedBands: {
-        reviewed: bandWindows.reviewed,
         unreviewed: bandWindows.unreviewed,
-        suspicious: suspiciousWindows,
+        reviewed: bandWindows.reviewed,
+        suspicious: suspiciousWindows, // 🔴 layer บนสุด
       } as any,
     } as any,
     scales: {
-      y: { min: 0 },
+      y: {
+        min: 0,
+        suggestedMax: 250,
+        title: {
+          display: true,
+          text: "ระดับน้ำมัน (ลิตร)",
+        },
+      },
       y1: {
         position: "right",
         min: 0,
+        suggestedMax: 100,
         grid: { drawOnChartArea: false },
+        title: {
+          display: true,
+          text: "ความเร็ว (กม./ชม.)",
+        },
       },
     },
   }
