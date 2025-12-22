@@ -7,16 +7,15 @@ export const reviewedBandsPlugin = {
   beforeDraw(chart: any, _args: any, opts: any) {
     const reviewed: Window[] = opts?.reviewed || []
     const unreviewed: Window[] = opts?.unreviewed || []
-    if (!reviewed.length && !unreviewed.length) return
+    const suspicious: Window[] = opts?.suspicious || []
 
     const { ctx, chartArea, scales } = chart
     const x = scales.x
     if (!x) return
 
-    const paint = (windows: Window[], fillStyle: string) => {
-      if (!windows.length) return
+    const paint = (windows: Window[], color: string) => {
       ctx.save()
-      ctx.fillStyle = fillStyle
+      ctx.fillStyle = color
       for (const w of windows) {
         const x1 = x.getPixelForValue(w.fromIdx)
         const x2 = x.getPixelForValue(w.toIdx)
@@ -32,10 +31,10 @@ export const reviewedBandsPlugin = {
       ctx.restore()
     }
 
-    // 🔴 Unreviewed (light red)
-    paint(unreviewed, "rgba(239,68,68,0.07)")
-    // 🔵 Reviewed (light blue)
-    paint(reviewed, "rgba(59,130,246,0.08)")
+    // order matters (bottom → top)
+    paint(unreviewed, "rgba(229,231,235,0.35)")   // ⚪ unreviewed
+    paint(reviewed, "rgba(59,130,246,0.18)")     // 🔵 reviewed
+    paint(suspicious, "rgba(239,68,68,0.35)")    // 🔴 suspicious
   },
 }
 
