@@ -34,13 +34,13 @@ export default function FuelDetectionPage() {
   const [loading, setLoading] = useState(false)
 
   /* --------------------------------------------------
-     🔍 Receive FULL filter from Filter component
+     🔍 Receive FULL filter (MULTI STATUS)
   -------------------------------------------------- */
   const handleQueryApply = async (filters: {
     plateDriver: string
     startDate: string
     endDate: string
-    status: string
+    statuses: string[]     // ✅ CHANGED
     movingOnly: boolean
   }) => {
     setLoading(true)
@@ -50,7 +50,7 @@ export default function FuelDetectionPage() {
         plateDriver,
         startDate,
         endDate,
-        status,
+        statuses,
         movingOnly,
       } = filters
 
@@ -66,10 +66,12 @@ export default function FuelDetectionPage() {
         endDate,
       })
 
-      if (status && status !== "all") {
-        params.append("status", status)
+      // ✅ multi status
+      if (statuses && statuses.length > 0) {
+        params.append("statuses", statuses.join(","))
       }
 
+      // ✅ separate movement filter
       if (movingOnly) {
         params.append("movingOnly", "true")
       }
@@ -88,8 +90,10 @@ export default function FuelDetectionPage() {
       }
 
       const json: FuelDetectionData[] = await res.json()
-      console.log("Fetched Data:", {
+
+      console.log("Fetched Fuel Detection:", {
         count: json.length,
+        filters: { statuses, movingOnly },
         sample: json.slice(0, 3),
       })
 

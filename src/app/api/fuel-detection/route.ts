@@ -52,8 +52,15 @@ export async function GET(request: Request) {
     const plateDriver = params.get("plateDriver")?.trim() || ""
     const startDate = params.get("startDate") || ""
     const endDate = params.get("endDate") || ""
-    const status = params.get("status")?.trim() || "all"
-    const movingOnly = params.get("movingOnly") === "true" // ✅ NEW
+
+    /* ✅ MULTI STATUS */
+    const statusesParam = params.get("statuses")
+    const statuses = statusesParam
+      ? statusesParam.split(",").map(s => s.trim()).filter(Boolean)
+      : []
+
+    /* ✅ MOVING FILTER */
+    const movingOnly = params.get("movingOnly") === "true"
 
     const client = await clientPromise
     const db = client.db("terminus")
@@ -74,12 +81,13 @@ export async function GET(request: Request) {
       query["ทะเบียนพาหนะ"] = plateDriver
     }
 
-    /* ---------------- Status filter (DB field) ---------------- */
-    if (status !== "all") {
-      query["สถานะ"] = status
+    /* ---------------- Status filter (MULTI) ---------------- */
+    if (statuses.length > 0) {
+      query["สถานะ"] = { $in: statuses }
     }
 
-    console.log("Mongo Query:", query, "movingOnly:", movingOnly)
+    console.log("Mongo Query:", query)
+    console.log("Filters:", { statuses, movingOnly })
 
     /* ---------------- Fetch ---------------- */
     let jobs = await db

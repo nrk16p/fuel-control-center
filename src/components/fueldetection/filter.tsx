@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState } from "react"
 import { DateRange } from "@/components/ui/daterange"
@@ -8,7 +8,7 @@ interface FuelDetectionFilterProps {
     plateDriver: string
     startDate: string
     endDate: string
-    status: string
+    statuses: string[]      // ✅ multi
     movingOnly: boolean
   }) => void
   isLoading: boolean
@@ -24,7 +24,7 @@ export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterPro
 
   const [dateRange, setDateRange] = useState({ from: startDate, to: yesterday })
   const [plateDriver, setPlateDriver] = useState("")
-  const [status, setStatus] = useState("all")
+  const [statuses, setStatuses] = useState<string[]>([]) // ✅
   const [movingOnly, setMovingOnly] = useState(false)
 
   const formatDate = (d?: Date) =>
@@ -33,6 +33,14 @@ export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterPro
           .toString()
           .padStart(2, "0")}/${d.getFullYear()}`
       : ""
+
+  const toggleStatus = (status: string) => {
+    setStatuses(prev =>
+      prev.includes(status)
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    )
+  }
 
   const handleApply = () => {
     if (!plateDriver || !dateRange.from || !dateRange.to) {
@@ -43,52 +51,54 @@ export const FuelDetectionFilter = ({ query, isLoading }: FuelDetectionFilterPro
       plateDriver,
       startDate: formatDate(dateRange.from),
       endDate: formatDate(dateRange.to),
-      status,
-      movingOnly, // ✅ ส่งไป BE
+      statuses,
+      movingOnly,
     })
   }
 
   return (
     <div className="bg-white rounded-xl border shadow-sm p-4 flex justify-between gap-4 items-center">
-      <div className="flex gap-4 items-start">
+      <div className="flex gap-6 items-start">
+        {/* Date */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">Date Range</label>
           <DateRange value={dateRange} onChange={setDateRange} />
         </div>
 
+        {/* Plate */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">Plate / Driver</label>
+          <label className="text-xs text-gray-500">Plate</label>
           <input
-            className="h-9 w-60 rounded-md border px-2 text-sm"
+            className="h-9 w-52 rounded-md border px-2 text-sm"
             value={plateDriver}
             onChange={e => setPlateDriver(e.target.value)}
             placeholder="71-8623"
           />
         </div>
 
+        {/* Status (multi) */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">สถานะรถ</label>
-          <select
-            className="h-9 w-40 rounded-md border px-2 text-sm"
-            value={status}
-            onChange={e => setStatus(e.target.value)}
-          >
-            <option value="all">ทั้งหมด</option>
-            <option value="รถวิ่ง">รถวิ่ง</option>
-            <option value="ดับเครื่อง">ดับเครื่อง</option>
-            <option value="จอด">จอด</option>
-            <option value="เดินเครื่อง">เดินเครื่อง</option>
-          </select>
+          {["รถวิ่ง", "จอดรถ", "ดับเครื่อง"].map(s => (
+            <label key={s} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={statuses.includes(s)}
+                onChange={() => toggleStatus(s)}
+              />
+              {s}
+            </label>
+          ))}
         </div>
 
-        {/* ✅ Separate filter */}
+        {/* movingOnly */}
         <label className="flex items-center gap-2 text-sm mt-6">
           <input
             type="checkbox"
             checked={movingOnly}
             onChange={e => setMovingOnly(e.target.checked)}
           />
-          แสดงเฉพาะช่วงรถเคลื่อนที่ (ความเร็ว &gt; 0)
+          เคลื่อนที่จริง (ความเร็ว &gt; 0)
         </label>
       </div>
 
