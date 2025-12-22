@@ -2,12 +2,13 @@ import { NextResponse } from "next/server"
 import clientPromise from "@/lib/mongodb"
 
 /* ======================================================
-   Helper: Sample data every 5 minutes (ของเดิม)
+   Helper: Sample data every 5 minutes
 ====================================================== */
 function sampleDataEvery5Minutes(data: any[]) {
   if (data.length === 0) return data
 
   const timeToMinutes = (timeStr: string): number => {
+    if (!timeStr) return 0
     const [hours, minutes, seconds] = timeStr.split(":").map(Number)
     return hours * 60 + minutes + Math.round((seconds || 0) / 60)
   }
@@ -50,17 +51,17 @@ export async function GET(request: Request) {
   try {
     const params = new URL(request.url).searchParams
 
-    const plateDriver = params.get("plateDriver") || ""
+    const plateDriver = params.get("plateDriver")?.trim() || ""
     const startDate = params.get("startDate") || ""
     const endDate = params.get("endDate") || ""
-    const status = params.get("status") || "all"   // ✅ เพิ่ม
+    const status = params.get("status")?.trim() || "all"
 
     const client = await clientPromise
     const db = client.db("terminus")
 
     const query: any = {}
 
-    // 📅 Date filter
+    /* ---------------- Date filter ---------------- */
     if (startDate && endDate) {
       query["วันที่"] = { $gte: startDate, $lte: endDate }
     } else if (startDate) {
@@ -69,45 +70,52 @@ export async function GET(request: Request) {
       query["วันที่"] = { $lte: endDate }
     }
 
-    // 🚗 Plate filter
+    /* ---------------- Plate filter ---------------- */
     if (plateDriver) {
       query["ทะเบียนพาหนะ"] = plateDriver
     }
 
-    // ✅ Status filter (ใช้ field ที่มีอยู่แล้ว)
-    // เช่น รถวิ่ง / ดับเครื่อง / จอด / เดินเครื่อง
+    /* ---------------- Status filter ---------------- */
     if (status !== "all") {
       query["สถานะ"] = status
     }
 
     console.log("MongoDB Query:", query)
 
+    /* ---------------- Fetch ---------------- */
     let jobs = await db
       .collection("driving_log")
       .find(query)
       .sort({ "วันที่": 1, "เวลา": 1 })
       .toArray()
 
-    // ⏱️ Sampling ทุก 5 นาที
+    console.log("Fetched from DB:", jobs.length)
+
+    /* ---------------- Sampling ---------------- */
     if (jobs.length > 0) {
-      const originalLength = jobs.length
+      const before = jobs.length
       jobs = sampleDataEvery5Minutes(jobs)
-      console.log(
-        `Data sampled every 5 minutes. Original: ${originalLength}, Sampled: ${jobs.length}`
-      )
-    }
-    // 🔥 IMPORTANT: แก้ปัญหา "รถวิ่งแต่ speed = 0" จาก sampling
-    if (status === "รถวิ่ง") {
-      jobs = jobs.filter(j => j["ความเร็ว(กม./ชม.)"] > 0)
+      console.log(`Sampled: ${before} → ${jobs.length}`)
     }
 
-    console.log("Fetched Jobs:", jobs.length)
+    /* ------------------------------------------------
+       🔥 FIX UX CONFUSION:
+       รถวิ่ง = ต้อง speed > 0 หลัง sampling
+    ------------------------------------------------ */
+    if (status === "รถวิ่ง") {
+      const before = jobs.length
+      jobs = jobs.filter(j => {
+        const speed = Number(j["ความเร็ว(กม./ชม.)"] ?? 0)
+        return speed > 0
+      })
+      console.log(`Filter รถวิ่ง (speed>0): ${before} → ${jobs.length}`)
+    }
 
     return NextResponse.json(jobs)
   } catch (err) {
-    console.error("ETL JOBS FETCH ERROR:", err)
+    console.error("FUEL DETECTION FETCH ERROR:", err)
     return NextResponse.json(
-      { error: "Failed to fetch ETL jobs" },
+      { error: "Failed to fetch fuel detection data" },
       { status: 500 }
     )
   }
