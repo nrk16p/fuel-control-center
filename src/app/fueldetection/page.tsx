@@ -28,7 +28,7 @@ type ReviewRow = {
 const FuelDetectionGraph = dynamic(
   () => import("@/components/fueldetection/graph"),
   {
-    ssr: false, // ✅ ป้องกัน window is not defined
+    ssr: false, // ✅ กัน window is not defined
     loading: () => (
       <div className="rounded-xl border bg-white p-6 shadow-sm animate-pulse">
         <div className="h-5 w-48 rounded bg-gray-200 mb-4" />
@@ -102,7 +102,7 @@ export default function FuelDetectionPage() {
         p1.append("movingOnly", "true")
       }
 
-      // UX: hide reviewed only when user explicitly requests
+      // UX: ซ่อน reviewed เฉพาะกรณี user เลือก
       if (showUnreviewed && !showReviewed) {
         p1.append("skipReviewed", "true")
       }
@@ -187,10 +187,13 @@ export default function FuelDetectionPage() {
           </div>
         </div>
       ) : (
-        <FuelDetectionGraph
-          data={data}
-          reviews={reviews}   {/* ✅ FIX สำคัญ */}
-        />
+        <>
+          {/* ส่ง reviews เข้า graph (จำเป็น) */}
+          <FuelDetectionGraph
+            data={data}
+            reviews={reviews}
+          />
+        </>
       )}
     </div>
   )
