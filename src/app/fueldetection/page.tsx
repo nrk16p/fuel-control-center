@@ -5,21 +5,38 @@ import dynamic from "next/dynamic"
 import { FuelDetectionFilter } from "@/components/fueldetection/filter"
 import type { FuelDetectionData } from "@/lib/types"
 
-/* ===============================
-   ✅ Client-only Graph
-================================ */
+/* ---------------------------------------
+   Types
+--------------------------------------- */
+type ReviewRow = {
+  _id: any
+  plate: string
+  start_ts: number
+  end_ts: number
+  decision: string
+  note?: string
+  reviewer?: string
+  created_at?: string
+  fuel_start?: number
+  fuel_end?: number
+  fuel_diff?: number
+}
+
+/* ---------------------------------------
+   Client-only Graph (Chart.js)
+--------------------------------------- */
 const FuelDetectionGraph = dynamic(
   () => import("@/components/fueldetection/graph"),
   {
-    ssr: false,
+    ssr: false, // ✅ ป้องกัน window is not defined
     loading: () => (
-      <div className="rounded-xl border bg-white p-6 shadow-sm">
-        <div className="h-5 w-48 rounded bg-gray-200 mb-4 animate-pulse" />
+      <div className="rounded-xl border bg-white p-6 shadow-sm animate-pulse">
+        <div className="h-5 w-48 rounded bg-gray-200 mb-4" />
         <div className="flex items-end gap-3 h-64">
           {[...Array(12)].map((_, i) => (
             <div
               key={i}
-              className="w-full rounded bg-gray-200 animate-pulse"
+              className="w-full rounded bg-gray-200"
               style={{ height: `${30 + (i % 5) * 15}%` }}
             />
           ))}
@@ -29,19 +46,25 @@ const FuelDetectionGraph = dynamic(
   }
 )
 
+/* ---------------------------------------
+   Page
+--------------------------------------- */
 export default function FuelDetectionPage() {
   const [data, setData] = useState<FuelDetectionData[]>([])
+  const [reviews, setReviews] = useState<ReviewRow[]>([])
   const [loading, setLoading] = useState(false)
 
-  /* --------------------------------------------------
-     🔍 Receive FULL filter (MULTI STATUS)
-  -------------------------------------------------- */
+  /* ---------------------------------------
+     🔍 Apply Filter
+  --------------------------------------- */
   const handleQueryApply = async (filters: {
     plateDriver: string
     startDate: string
     endDate: string
-    statuses: string[]     // ✅ CHANGED
+    statuses: string[]
     movingOnly: boolean
+    showReviewed: boolean
+    showUnreviewed: boolean
   }) => {
     setLoading(true)
 
@@ -52,52 +75,79 @@ export default function FuelDetectionPage() {
         endDate,
         statuses,
         movingOnly,
+        showReviewed,
+        showUnreviewed,
       } = filters
 
       if (!plateDriver || !startDate || !endDate) {
         setData([])
+        setReviews([])
         return
       }
 
-      /* ---------------- Build query params ---------------- */
-      const params = new URLSearchParams({
+      /* ----------------------------
+         1) Driving data
+      ---------------------------- */
+      const p1 = new URLSearchParams({
         plateDriver,
         startDate,
         endDate,
       })
 
-      // ✅ multi status
-      if (statuses && statuses.length > 0) {
-        params.append("statuses", statuses.join(","))
+      if (statuses.length > 0) {
+        p1.append("statuses", statuses.join(","))
       }
 
-      // ✅ separate movement filter
       if (movingOnly) {
-        params.append("movingOnly", "true")
+        p1.append("movingOnly", "true")
       }
 
-      /* ---------------- Fetch ---------------- */
-      const res = await fetch(
-        `/api/fuel-detection?${params.toString()}`,
+      // UX: hide reviewed only when user explicitly requests
+      if (showUnreviewed && !showReviewed) {
+        p1.append("skipReviewed", "true")
+      }
+
+      const fetchDriving = fetch(
+        `/api/fuel-detection?${p1.toString()}`,
         {
           cache: "no-store",
           headers: { "Cache-Control": "no-cache" },
         }
-      )
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch fuel detection data")
-      }
-
-      const json: FuelDetectionData[] = await res.json()
-
-      console.log("Fetched Fuel Detection:", {
-        count: json.length,
-        filters: { statuses, movingOnly },
-        sample: json.slice(0, 3),
+      ).then(res => {
+        if (!res.ok) throw new Error("Fetch driving data failed")
+        return res.json()
       })
 
-      setData(json)
+      /* ----------------------------
+         2) Review windows
+      ---------------------------- */
+      const p2 = new URLSearchParams({
+        plate: plateDriver,
+        startDate,
+        endDate,
+      })
+
+      const fetchReviews = fetch(
+        `/api/fuel-reviews?${p2.toString()}`,
+        {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache" },
+        }
+      ).then(res => {
+        if (!res.ok) throw new Error("Fetch reviews failed")
+        return res.json()
+      })
+
+      /* ----------------------------
+         Fetch both in parallel
+      ---------------------------- */
+      const [drivingJson, reviewsJson] = await Promise.all([
+        fetchDriving,
+        fetchReviews,
+      ])
+
+      setData(drivingJson)
+      setReviews(reviewsJson)
     } catch (err) {
       console.error("Fuel detection fetch error:", err)
       alert("Error fetching data")
@@ -106,10 +156,14 @@ export default function FuelDetectionPage() {
     }
   }
 
+  /* ---------------------------------------
+     Render
+  --------------------------------------- */
   return (
     <div className="p-6 space-y-4">
       <h1 className="text-2xl font-bold">
-        ⛽ Fuel Detection <span className="text-gray-500">(รายคัน)</span>
+        ⛽ Fuel Detection{" "}
+        <span className="text-gray-500">(Review-aware)</span>
       </h1>
 
       {/* 🔍 Filter */}
@@ -133,7 +187,10 @@ export default function FuelDetectionPage() {
           </div>
         </div>
       ) : (
-        <FuelDetectionGraph data={data} />
+        <FuelDetectionGraph
+          data={data}
+          reviews={reviews}   {/* ✅ FIX สำคัญ */}
+        />
       )}
     </div>
   )
