@@ -20,6 +20,11 @@ export type ReviewRow = {
 }
 
 type Window = { fromIdx: number; toIdx: number }
+type Decision =
+  | "reviewed_ok"
+  | "reviewed_suspicious"
+  | "false_positive"
+  | "need_follow_up"
 
 interface Props {
   data: FuelDetectionData[]
@@ -31,19 +36,27 @@ export default function FuelDetectionGraph({
   data,
   reviews,
 }: Props) {
-  /* ---------- selection state ---------- */
+  /* ---------- selection ---------- */
   const [selStart, setSelStart] = useState<number | null>(null)
   const [selEnd, setSelEnd] = useState<number | null>(null)
+
+  /* ---------- review form ---------- */
+  const [decision, setDecision] =
+    useState<Decision>("reviewed_suspicious")
+  const [note, setNote] = useState("")
+  const [saving, setSaving] = useState(false)
 
   /* ---------- Data prep ---------- */
   const labels = useMemo(
     () => data.map(d => `${d.วันที่} ${d.เวลา}`),
     [data]
   )
+
   const fuelData = useMemo(
     () => data.map(d => Number(d.น้ำมัน ?? 0)),
     [data]
   )
+
   const speedData = useMemo(
     () => data.map(d => Number(d["ความเร็ว(กม./ชม.)"] ?? 0)),
     [data]
@@ -58,7 +71,7 @@ export default function FuelDetectionGraph({
     [data]
   )
 
-  /* ---------- reviewed / unreviewed ---------- */
+  /* ---------- reviewed/unreviewed ---------- */
   const bandWindows = useMemo(() => {
     const reviewedFlags = tsData.map(ts =>
       ts == null
@@ -93,8 +106,6 @@ export default function FuelDetectionGraph({
   )
 
   const suspiciousWindows = useMemo<Window[]>(() => {
-    if (!suspiciousReviews.length) return []
-
     const flags = tsData.map(ts =>
       ts == null
         ? false
@@ -139,6 +150,8 @@ export default function FuelDetectionGraph({
     if (start != null && end != null) {
       setSelStart(start)
       setSelEnd(end)
+      setDecision("reviewed_suspicious")
+      setNote(r.note ?? "")
     }
   }
 
@@ -160,13 +173,49 @@ export default function FuelDetectionGraph({
         }
       : null
 
+  /* ---------- SAVE REVIEW (REAL) ---------- */
+  const saveReview = async () => {
+    if (!selected) return
+
+    setSaving(true)
+    try {
+      const res = await fetch("/api/fuel-reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plate: selected.plate,
+          startDate: selected.startDate,
+          startTime: selected.startTime,
+          endDate: selected.endDate,
+          endTime: selected.endTime,
+          fuelStart: selected.fuelStart,
+          fuelEnd: selected.fuelEnd,
+          fuelDiff: selected.fuelDiff,
+          durationMin: selected.durationMin,
+          decision,
+          note,
+          reviewer: "ops",
+        }),
+      })
+
+      if (!res.ok) throw new Error("Save failed")
+
+      alert("✅ บันทึกผลตรวจเรียบร้อย")
+
+      setSelStart(null)
+      setSelEnd(null)
+      setNote("")
+    } catch (err) {
+      console.error(err)
+      alert("❌ บันทึกไม่สำเร็จ")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   /* ---------- Render ---------- */
   return (
     <div className="space-y-6">
-      <div className="text-sm text-gray-600">
-        ⚪ Unreviewed | 🔵 Reviewed | 🔴 ลดลงผิดปกติ
-      </div>
-
       <FuelChart
         labels={labels}
         fuelData={fuelData}
@@ -176,12 +225,7 @@ export default function FuelDetectionGraph({
         onSelectIndex={handleSelectIndex}
       />
 
-      {/* Suspicious Cards */}
       <div className="space-y-3">
-        <div className="font-semibold text-red-700">
-          ⚠️ Suspicious cases ({suspiciousReviews.length})
-        </div>
-
         {suspiciousReviews.map(r => (
           <SuspiciousCaseCard
             key={String(r._id)}
@@ -191,21 +235,20 @@ export default function FuelDetectionGraph({
             fuelDiff={r.fuel_diff}
             note={r.note}
             reviewer={r.reviewer}
-            onSelect={() => selectFromReview(r)} // ✅ สำคัญ
+            onSelect={() => selectFromReview(r)}
           />
         ))}
       </div>
 
-      {/* Review Panel */}
       {selected && (
         <ReviewPanel
           selected={selected}
-          decision="reviewed_suspicious"
-          note=""
-          saving={false}
-          onDecisionChange={() => {}}
-          onNoteChange={() => {}}
-          onSave={() => {}}
+          decision={decision}
+          note={note}
+          saving={saving}
+          onDecisionChange={setDecision}
+          onNoteChange={setNote}
+          onSave={saveReview}   {/* ✅ FIX */}
         />
       )}
     </div>
