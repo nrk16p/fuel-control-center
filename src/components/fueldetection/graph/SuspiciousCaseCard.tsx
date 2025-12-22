@@ -38,12 +38,12 @@ export function SuspiciousCaseCard({
         {dayjs(endTs).format("HH:mm")}
       </div>
 
-      <div className="text-sm">
+        <div className="text-sm">
         ⛽ ลดลง{" "}
         <span className="font-semibold text-red-700">
-          {fuelDiff ?? "-"} ลิตร
+            {typeof fuelDiff === "number" ? fuelDiff.toFixed(2) : "-"} ลิตร
         </span>
-      </div>
+        </div>
 
       {note && <div className="text-sm">📝 {note}</div>}
       {reviewer && (
