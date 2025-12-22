@@ -216,6 +216,7 @@ export default function FuelDetectionGraph({
   /* ---------- Render ---------- */
   return (
     <div className="space-y-6">
+      {/* Chart */}
       <FuelChart
         labels={labels}
         fuelData={fuelData}
@@ -225,6 +226,20 @@ export default function FuelDetectionGraph({
         onSelectIndex={handleSelectIndex}
       />
 
+      {/* Review Panel (ขึ้นก่อน) */}
+      {selected && (
+        <ReviewPanel
+          selected={selected}
+          decision={decision}
+          note={note}
+          saving={saving}
+          onDecisionChange={setDecision}
+          onNoteChange={setNote}
+          onSave={saveReview}
+        />
+      )}
+
+      {/* Suspicious Cards */}
       <div className="space-y-3">
         {suspiciousReviews.map(r => (
           <SuspiciousCaseCard
@@ -234,23 +249,10 @@ export default function FuelDetectionGraph({
             endTs={r.end_ts}
             fuelDiff={r.fuel_diff}
             note={r.note}
-            reviewer={r.reviewer}
             onSelect={() => selectFromReview(r)}
           />
         ))}
       </div>
-
-      {selected && (
-        <ReviewPanel
-          selected={selected}
-          decision={decision}
-          note={note}
-          saving={saving}
-          onDecisionChange={setDecision}
-          onNoteChange={setNote}
-          onSave={saveReview}  
-        />
-      )}
     </div>
   )
 }
