@@ -8,7 +8,7 @@ import type { FuelDetectionData } from "@/lib/types"
 /* ---------------------------------------
    Types
 --------------------------------------- */
-type ReviewRow = {
+export type ReviewRow = {
   _id: any
   plate: string
   start_ts: number
@@ -24,9 +24,13 @@ type ReviewRow = {
 
 /* ---------------------------------------
    Client-only Graph (Chart.js)
+   👉 updated path after refactor
 --------------------------------------- */
 const FuelDetectionGraph = dynamic(
-  () => import("@/components/fueldetection/graph"),
+  () =>
+    import(
+      "@/components/fueldetection/graph/FuelDetectionGraph"
+    ),
   {
     ssr: false, // ✅ กัน window is not defined
     loading: () => (
@@ -187,13 +191,10 @@ export default function FuelDetectionPage() {
           </div>
         </div>
       ) : (
-        <>
-          {/* ส่ง reviews เข้า graph (จำเป็น) */}
-          <FuelDetectionGraph
-            data={data}
-            reviews={reviews}
-          />
-        </>
+        <FuelDetectionGraph
+          data={data}
+          reviews={reviews}
+        />
       )}
     </div>
   )
