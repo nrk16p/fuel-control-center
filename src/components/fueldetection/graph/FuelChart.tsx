@@ -9,22 +9,37 @@ import {
 } from "chart.js"
 import zoomPlugin from "chartjs-plugin-zoom"
 import { Chart } from "react-chartjs-2"
+import "./reviewedBandsPlugin"
 
+/* ---------------------------------------
+   Register Chart.js
+--------------------------------------- */
 ChartJS.register(...registerables, zoomPlugin)
+
+/* ---------------------------------------
+   Types
+--------------------------------------- */
+type Window = { fromIdx: number; toIdx: number }
 
 interface Props {
   labels: string[]
   fuelData: number[]
   speedData: number[]
-  reviewIndexWindows: Array<{ fromIdx: number; toIdx: number }>
+  bandWindows: {
+    reviewed: Window[]
+    unreviewed: Window[]
+  }
   onSelectIndex: (idx: number) => void
 }
 
+/* ---------------------------------------
+   Component
+--------------------------------------- */
 export function FuelChart({
   labels,
   fuelData,
   speedData,
-  reviewIndexWindows,
+  bandWindows,
   onSelectIndex,
 }: Props) {
   const data: ChartData<"bar" | "line", number[], string> = {
@@ -68,18 +83,36 @@ export function FuelChart({
         },
       },
       zoom: {
-        zoom: { wheel: { enabled: true }, mode: "x" },
+        zoom: {
+          wheel: { enabled: true },
+          pinch: { enabled: true },
+          mode: "x",
+        },
         pan: { enabled: true, mode: "x" },
       },
-      reviewedBands: { windows: reviewIndexWindows } as any,
+      reviewedBands: {
+        reviewed: bandWindows.reviewed,
+        unreviewed: bandWindows.unreviewed,
+      } as any,
     } as any,
     scales: {
-      y: { min: 0, suggestedMax: 250 },
+      y: {
+        min: 0,
+        suggestedMax: 250,
+        title: {
+          display: true,
+          text: "ระดับน้ำมัน (ลิตร)",
+        },
+      },
       y1: {
         position: "right",
         min: 0,
         suggestedMax: 100,
         grid: { drawOnChartArea: false },
+        title: {
+          display: true,
+          text: "ความเร็ว (กม./ชม.)",
+        },
       },
     },
   }
