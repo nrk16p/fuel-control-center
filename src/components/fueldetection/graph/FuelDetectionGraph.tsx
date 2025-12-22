@@ -22,8 +22,12 @@ export default function FuelDetectionGraph({ data, reviews }: any) {
     [data]
   )
 
-  const tsData = useMemo(
-    () => data.map((d: any) => toDateFromThai(d.วันที่, d.เวลา)?.getTime()),
+  const tsData = useMemo<(number | null)[]>(
+    () =>
+      data.map(d => {
+        const dt = toDateFromThai(d.วันที่, d.เวลา)
+        return dt ? dt.getTime() : null
+      }),
     [data]
   )
 
