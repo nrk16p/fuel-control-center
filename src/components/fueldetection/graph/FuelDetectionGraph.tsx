@@ -41,6 +41,7 @@ export default function FuelDetectionGraph({
   data,
   reviews,
 }: Props) {
+  /* ---------- UI state ---------- */
   const [selStart, setSelStart] = useState<number | null>(null)
   const [selEnd, setSelEnd] = useState<number | null>(null)
   const [decision, setDecision] =
@@ -48,9 +49,7 @@ export default function FuelDetectionGraph({
   const [note, setNote] = useState<string>("")
   const [saving, setSaving] = useState<boolean>(false)
 
-  /* ---------------------------------------
-     Data prep
-  --------------------------------------- */
+  /* ---------- Chart data prep ---------- */
   const labels = useMemo<string[]>(
     () => data.map(d => `${d.วันที่} ${d.เวลา}`),
     [data]
@@ -78,9 +77,7 @@ export default function FuelDetectionGraph({
     [data]
   )
 
-  /* ---------------------------------------
-     Reviewed windows → index ranges
-  --------------------------------------- */
+  /* ---------- Reviewed windows → index ranges ---------- */
   const reviewIndexWindows = useMemo<
     { fromIdx: number; toIdx: number }[]
   >(() => {
@@ -106,10 +103,8 @@ export default function FuelDetectionGraph({
 
     for (let i = 0; i < flags.length; i++) {
       if (!flags[i]) continue
-
       let j = i
       while (flags[j + 1]) j++
-
       windows.push({ fromIdx: i, toIdx: j })
       i = j
     }
@@ -117,9 +112,7 @@ export default function FuelDetectionGraph({
     return windows
   }, [reviews, tsData])
 
-  /* ---------------------------------------
-     Range selection
-  --------------------------------------- */
+  /* ---------- Range selection ---------- */
   const handleSelectIndex = (idx: number) => {
     if (selStart == null || selEnd != null) {
       setSelStart(idx)
@@ -129,6 +122,7 @@ export default function FuelDetectionGraph({
     }
   }
 
+  /* ---------- Selected summary ---------- */
   const selected = useMemo(() => {
     if (
       selStart == null ||
@@ -157,9 +151,51 @@ export default function FuelDetectionGraph({
     }
   }, [selStart, selEnd, data])
 
-  /* ---------------------------------------
-     Render
-  --------------------------------------- */
+  /* ---------- Save review ---------- */
+  const saveReview = async () => {
+    if (!selected) return
+
+    setSaving(true)
+    try {
+      const res = await fetch("/api/fuel-reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plate: selected.plate,
+          startDate: selected.startDate,
+          startTime: selected.startTime,
+          endDate: selected.endDate,
+          endTime: selected.endTime,
+          fuelStart: selected.fuelStart,
+          fuelEnd: selected.fuelEnd,
+          fuelDiff: selected.fuelDiff,
+          durationMin: selected.durationMin,
+          decision,
+          note,
+          reviewer: "ops",
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Save review failed")
+      }
+
+      alert("✅ บันทึกผลตรวจเรียบร้อย")
+
+      // reset state หลัง save
+      setSelStart(null)
+      setSelEnd(null)
+      setDecision("reviewed_ok")
+      setNote("")
+    } catch (err) {
+      console.error(err)
+      alert("❌ บันทึกไม่สำเร็จ")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /* ---------- Render ---------- */
   return (
     <div className="space-y-4">
       <FuelChart
@@ -178,10 +214,7 @@ export default function FuelDetectionGraph({
           saving={saving}
           onDecisionChange={setDecision}
           onNoteChange={setNote}
-          onSave={() => {
-            /* hook saveReview later */
-            setSaving(false)
-          }}
+          onSave={saveReview}
         />
       )}
     </div>
