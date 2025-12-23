@@ -35,7 +35,7 @@ export function ReviewPanel({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="border p-2">Start: {selected.fuelStart}</div>
         <div className="border p-2">End: {selected.fuelEnd}</div>
-        <div className="border p-2">Diff: {selected.fuelDiff}</div>
+        <div className="border p-2">Diff: {selected.fuelDiff.toFixed(2)}</div>
         <div className="border p-2">Duration: {selected.durationMin} min</div>
       </div>
 

@@ -41,7 +41,7 @@ export function SuspiciousCaseCard({
       <div className="text-sm">
         ⛽ ลดลง{" "}
         <span className="font-semibold text-red-700">
-          {fuelDiff ?? "-"} ลิตร
+          {fuelDiff?.toFixed(2) ?? "-"} ลิตร
         </span>
       </div>
 

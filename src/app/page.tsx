@@ -1,6 +1,7 @@
 "use client"
 
 import { motion, Variants, cubicBezier } from "framer-motion"
+import Link from "next/link"
 
 /* --------------------------------
    Enterprise Easing (Type-safe)
@@ -54,18 +55,22 @@ export default function HomePage() {
   const modules = [
     {
       title: "🔥 Engine-On",
+      nav: "engineon",
       desc: "วิเคราะห์การติดเครื่องเป็นเวลานาน เพื่อควบคุมพฤติกรรมการใช้งานรถ และลดต้นทุนที่ไม่จำเป็น",
     },
     {
       title: "⛽ Fuel Detection",
+      nav: "fueldetection",
       desc: "ตรวจจับเหตุการณ์น้ำมันลดผิดปกติ พร้อมระบบบันทึกผลการตรวจสอบที่ตรวจสอบย้อนหลังได้",
     },
     {
       title: "⚙️ Pipeline",
+      nav: "pipeline",
       desc: "ระบบประมวลผลข้อมูลอัตโนมัติ เพื่อให้ข้อมูลถูกต้อง ทันเวลา และลดภาระงาน manual",
     },
     {
       title: "🏭 Master Data (Plant)",
+      nav: "plants",
       desc: "จัดการข้อมูลสถานที่ปฏิบัติงาน เพื่อเพิ่มความแม่นยำในการวิเคราะห์ และลดความคลาดเคลื่อนของระบบ",
     },
   ]
@@ -104,16 +109,17 @@ export default function HomePage() {
           className="grid gap-5 text-left sm:grid-cols-2"
         >
           {modules.map((m) => (
-            <motion.div
-              key={m.title}
-              variants={fadeUp}
-              whileHover={cardHover}
-              transition={hoverTransition}
-              className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
-            >
-              <div className="mb-2 text-base font-semibold">{m.title}</div>
-              <p className="text-sm leading-relaxed text-gray-500">{m.desc}</p>
-            </motion.div>
+            <Link key={m.title} href={`/${m.nav}`}>
+              <motion.div
+                variants={fadeUp}
+                whileHover={cardHover}
+                transition={hoverTransition}
+                className="cursor-pointer rounded-xl border border-gray-200 bg-white p-5"
+              >
+                <div className="mb-2 text-base font-semibold">{m.title}</div>
+                <p className="text-sm leading-relaxed text-gray-500">{m.desc}</p>
+              </motion.div>
+            </Link>
           ))}
         </motion.div>
 
