@@ -56,11 +56,18 @@ export function EngineOnTable({
             <Th onClick={() => onSort("Supervisor")}>Driver</Th>
             <Th onClick={() => onSort("TruckPlateNo")}>ทะเบียน</Th>
             <Th onClick={() => onSort("Date")}>วันที่</Th>
+            <Th>Engine-On (Not Plant)</Th>
+            <Th>Lite (Not Plant)</Th>
+
             <Th onClick={() => onSort("TotalMinutes")}>Engine-On</Th>
+
             <Th>สำรองเวลาโหลด</Th>
             <Th>ส่วนต่าง</Th>
+
             <Th onClick={() => onSort("#trip")}>Trip</Th>
+
             <Th onClick={() => onSort("จำนวนลิตร")}>Lite</Th>
+
             <Th>Version</Th>
             <Th center>Map</Th>
           </tr>
@@ -71,14 +78,31 @@ export function EngineOnTable({
             const diffMin = r["ส่วนต่าง"] ?? 0
             const diffStr = r["ส่วนต่าง_hhmm"]
             const reserve = r["สำรองเวลาโหลด"]
+
             const liter = r["จำนวนลิตร"]
+
+            const notPlantStr = r.not_plant_hhmm
+            const notPlantLiter = r.not_plant_liter
 
             return (
               <tr key={r._id} className="border-t hover:bg-gray-50">
                 <Td>{r.Supervisor || "-"}</Td>
                 <Td>{r.TruckPlateNo}</Td>
                 <Td>{formatDate(r.Date)}</Td>
-                <Td>{r.Duration_str}</Td>
+
+                {/* Engine-On (Plant) */}
+                <Td>{r.Duration_str ?? "-"}</Td>
+
+                {/* Engine-On (Not Plant) */}
+                <Td>
+                  {notPlantStr ? (
+                    <span className="text-purple-600 font-medium">
+                      {notPlantStr}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </Td>
 
                 {/* สำรองเวลาโหลด */}
                 <Td>
@@ -109,9 +133,10 @@ export function EngineOnTable({
                   )}
                 </Td>
 
+                {/* Trip */}
                 <Td>{r["#trip"] ?? "-"}</Td>
 
-                {/* จำนวนลิตร */}
+                {/* Fuel (Plant) */}
                 <Td>
                   {liter != null ? (
                     <span
@@ -129,8 +154,27 @@ export function EngineOnTable({
                   )}
                 </Td>
 
+                {/* Fuel (Not Plant) */}
+                <Td>
+                  {notPlantLiter != null ? (
+                    <span
+                      className={`font-semibold ${
+                        notPlantLiter > 2
+                          ? "text-red-600"
+                          : "text-purple-600"
+                      }`}
+                    >
+                      {notPlantLiter.toFixed(2)} L
+                      {notPlantLiter > 2 && " ⚠️"}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">N/A</span>
+                  )}
+                </Td>
+
                 <Td>{r.version_type}</Td>
 
+                {/* Map */}
                 <Td center>
                   <a
                     href={`/engineon/${r._id}`}
