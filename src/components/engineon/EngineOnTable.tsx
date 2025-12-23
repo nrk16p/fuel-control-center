@@ -56,6 +56,7 @@ export function EngineOnTable({
             <Th onClick={() => onSort("Supervisor")}>Driver</Th>
             <Th onClick={() => onSort("TruckPlateNo")}>ทะเบียน</Th>
             <Th onClick={() => onSort("Date")}>วันที่</Th>
+
             <Th>Engine-On (Not Plant)</Th>
             <Th>Lite (Not Plant)</Th>
 
@@ -79,19 +80,20 @@ export function EngineOnTable({
             const diffStr = r["ส่วนต่าง_hhmm"]
             const reserve = r["สำรองเวลาโหลด"]
 
-            const liter = r["จำนวนลิตร"]
-
+            const plantLiter = r["จำนวนลิตร"]
             const notPlantStr = r.not_plant_hhmm
             const notPlantLiter = r.not_plant_liter
 
             return (
               <tr key={r._id} className="border-t hover:bg-gray-50">
+                {/* Driver */}
                 <Td>{r.Supervisor || "-"}</Td>
-                <Td>{r.TruckPlateNo}</Td>
-                <Td>{formatDate(r.Date)}</Td>
 
-                {/* Engine-On (Plant) */}
-                <Td>{r.Duration_str ?? "-"}</Td>
+                {/* Plate */}
+                <Td>{r.TruckPlateNo}</Td>
+
+                {/* Date */}
+                <Td>{formatDate(r.Date)}</Td>
 
                 {/* Engine-On (Not Plant) */}
                 <Td>
@@ -103,6 +105,27 @@ export function EngineOnTable({
                     <span className="text-gray-400">-</span>
                   )}
                 </Td>
+
+                {/* Lite (Not Plant) */}
+                <Td>
+                  {notPlantLiter != null ? (
+                    <span
+                      className={`font-semibold ${
+                        notPlantLiter > 2
+                          ? "text-red-600"
+                          : "text-purple-600"
+                      }`}
+                    >
+                      {notPlantLiter.toFixed(2)} L
+                      {notPlantLiter > 2 && " ⚠️"}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">N/A</span>
+                  )}
+                </Td>
+
+                {/* Engine-On (Plant) */}
+                <Td>{r.Duration_str ?? "-"}</Td>
 
                 {/* สำรองเวลาโหลด */}
                 <Td>
@@ -136,42 +159,25 @@ export function EngineOnTable({
                 {/* Trip */}
                 <Td>{r["#trip"] ?? "-"}</Td>
 
-                {/* Fuel (Plant) */}
+                {/* Lite (Plant) */}
                 <Td>
-                  {liter != null ? (
+                  {plantLiter != null ? (
                     <span
                       className={`font-semibold ${
-                        liter > 2
+                        plantLiter > 2
                           ? "text-red-600"
                           : "text-yellow-600"
                       }`}
                     >
-                      {liter.toFixed(2)} L
-                      {liter > 2 && " 🔥"}
+                      {plantLiter.toFixed(2)} L
+                      {plantLiter > 2 && " 🔥"}
                     </span>
                   ) : (
                     <span className="text-gray-400">N/A</span>
                   )}
                 </Td>
 
-                {/* Fuel (Not Plant) */}
-                <Td>
-                  {notPlantLiter != null ? (
-                    <span
-                      className={`font-semibold ${
-                        notPlantLiter > 2
-                          ? "text-red-600"
-                          : "text-purple-600"
-                      }`}
-                    >
-                      {notPlantLiter.toFixed(2)} L
-                      {notPlantLiter > 2 && " ⚠️"}
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">N/A</span>
-                  )}
-                </Td>
-
+                {/* Version */}
                 <Td>{r.version_type}</Td>
 
                 {/* Map */}
