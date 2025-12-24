@@ -40,7 +40,7 @@ export default function Navbar() {
           <NavigationMenuItem>
             <NavigationMenuTrigger>🧭 Operations</NavigationMenuTrigger>
             <NavigationMenuContent>
-              <ul className="grid w-[220px] gap-1 p-2">
+              <ul className="grid w-55 gap-1 p-2">
                 <li>
                   <Link href="/fueldetection" legacyBehavior passHref>
                     <NavigationMenuLink className="nav-sub">
@@ -52,6 +52,13 @@ export default function Navbar() {
                   <Link href="/engineon" legacyBehavior passHref>
                     <NavigationMenuLink className="nav-sub">
                       🚛 Engine-On
+                    </NavigationMenuLink>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/smartdistance" legacyBehavior passHref>
+                    <NavigationMenuLink className="nav-sub">
+                      🗺️ Smart-Distance
                     </NavigationMenuLink>
                   </Link>
                 </li>
@@ -70,11 +77,18 @@ export default function Navbar() {
           <NavigationMenuItem>
             <NavigationMenuTrigger>🏭 Master Data</NavigationMenuTrigger>
             <NavigationMenuContent>
-              <ul className="grid w-[220px] gap-1 p-2">
+              <ul className="grid w-55 gap-1 p-2">
                 <li>
                   <Link href="/plants" legacyBehavior passHref>
                     <NavigationMenuLink className="nav-sub">
                       🏭 Plants
+                    </NavigationMenuLink>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/drivers" legacyBehavior passHref>
+                    <NavigationMenuLink className="nav-sub">
+                      🚚 Drivers
                     </NavigationMenuLink>
                   </Link>
                 </li>
