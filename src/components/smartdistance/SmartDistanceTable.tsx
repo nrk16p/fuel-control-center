@@ -87,11 +87,11 @@ function InfoTooltip({ text }: { text: string }) {
    Styles
 ------------------------------------------------- */
 const styles = {
-  th: "px-2 py-2 text-left font-semibold border-b",
-  thCenter: "px-2 py-2 text-center font-semibold border-b",
-  thSub: "px-2 py-1 text-center text-xs font-medium border-b",
-  td: "px-2 py-2 text-center align-middle",
-  tdCenter: "px-2 py-2 text-center",
+  th: "px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200",
+  thCenter: "px-3 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200",
+  thSub: "px-3 py-2 text-center text-xs font-medium text-gray-600 border-b border-gray-200",
+  td: "px-3 py-3 text-sm",
+  tdCenter: "px-3 py-3 text-sm text-center",
 }
 
 /* -------------------------------------------------
@@ -115,9 +115,9 @@ export function SmartDistanceTable({ data }: Props) {
   return (
     <div className="space-y-4">
       {/* ===== Table ===== */}
-      <div className="overflow-x-auto border rounded">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100 sticky top-0 z-10">
+      <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
+        <table className="w-full">
+          <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
               <th rowSpan={2} className={styles.th}>Ticket</th>
               <th rowSpan={2} className={styles.th}>Truck</th>
@@ -133,6 +133,7 @@ export function SmartDistanceTable({ data }: Props) {
                 OSRM <InfoTooltip text="คำนวณจาก Map API" />
               </th>
 
+              <th rowSpan={2} className={styles.thCenter}>Status</th>
               <th rowSpan={2} className={styles.thCenter}>Map</th>
             </tr>
 
@@ -146,47 +147,76 @@ export function SmartDistanceTable({ data }: Props) {
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className="bg-white divide-y divide-gray-200">
             {pageData.map(row => (
               <tr
                 key={row.TicketNo}
-                className="border-t hover:bg-gray-50"
+                className="hover:bg-gray-50 transition-colors"
               >
                 <td className={styles.td}>
                   <Link
                     href={`/smartdistance/${row.TicketNo}`}
-                    className="text-blue-600 underline"
+                    className="text-blue-600 hover:text-blue-800 font-medium"
                   >
                     {row.TicketNo}
                   </Link>
                   {row.TicketCreateAt && (
-                    <div className="text-xs text-gray-400">
-                      {new Date(row.TicketCreateAt).toLocaleString()}
+                    <div className="text-xs text-gray-500 mt-1">
+                      {new Date(row.TicketCreateAt).toLocaleString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </div>
                   )}
                 </td>
 
                 <td className={styles.td}>
-                  <div>{row.TruckPlateNo}</div>
-                  <div className="text-xs text-gray-400">{row.TruckNo}</div>
+                  <div className="font-medium text-gray-900">{row.TruckPlateNo}</div>
+                  <div className="text-xs text-gray-500">{row.TruckNo}</div>
                 </td>
 
                 <td className={`${styles.td} text-xs`}>
-                  <div>{row.PlantCode}</div>
-                  <div className="text-gray-400">→ {row.SiteCode}</div>
+                  <div className="font-medium text-gray-900">{row.PlantCode}</div>
+                  <div className="text-gray-500">→ {row.SiteCode}</div>
                 </td>
 
-                <td className="px-2 py-2 text-right">{fmt(row.rmc_distance_km_p2s)}</td>
-                <td className="px-2 py-2 text-right">{fmt(row.rmc_distance_km_s2p)}</td>
+                <td className="px-3 py-3 text-sm text-right text-gray-900">
+                  {fmt(row.rmc_distance_km_p2s)}
+                </td>
+                <td className="px-3 py-3 text-sm text-right text-gray-900">
+                  {fmt(row.rmc_distance_km_s2p)}
+                </td>
 
-                <td className="px-2 py-2 text-right text-blue-600">{fmt(row.gps_distance_km_p2s)}</td>
-                <td className="px-2 py-2 text-right text-blue-600">{fmt(row.gps_distance_km_s2p)}</td>
+                <td className="px-3 py-3 text-sm text-right text-blue-600 font-medium">
+                  {fmt(row.gps_distance_km_p2s)}
+                </td>
+                <td className="px-3 py-3 text-sm text-right text-blue-600 font-medium">
+                  {fmt(row.gps_distance_km_s2p)}
+                </td>
 
-                <td className="px-2 py-2 text-right text-green-600">{fmt(row.osrm_distance_km_p2s)}</td>
-                <td className="px-2 py-2 text-right text-green-600">{fmt(row.osrm_distance_km_s2p)}</td>
+                <td className="px-3 py-3 text-sm text-right text-green-600 font-medium">
+                  {fmt(row.osrm_distance_km_p2s)}
+                </td>
+                <td className="px-3 py-3 text-sm text-right text-green-600 font-medium">
+                  {fmt(row.osrm_distance_km_s2p)}
+                </td>
+
+                <td className={`${styles.tdCenter} text-sm`}>
+                  <span className="inline-flex items-center">
+                    {getStatus(row)}
+                  </span>
+                </td>
 
                 <td className={styles.tdCenter}>
-                  <Link href={`/smartdistance/${row.TicketNo}`}>🗺️</Link>
+                  <Link 
+                    href={`/smartdistance/${row.TicketNo}`}
+                    className="text-xl hover:scale-110 inline-block transition-transform"
+                  >
+                    🗺️
+                  </Link>
                 </td>
               </tr>
             ))}
@@ -197,8 +227,8 @@ export function SmartDistanceTable({ data }: Props) {
       {/* ===== Pagination Bar ===== */}
       <div className="flex items-center justify-between">
         {/* Page size */}
-        <div className="flex items-center gap-2 text-sm">
-          <span>Rows:</span>
+        <div className="flex items-center gap-2 text-sm text-gray-700">
+          <span className="font-medium">Rows:</span>
           <Select
             value={String(pageSize)}
             onValueChange={(v) => {
@@ -206,11 +236,11 @@ export function SmartDistanceTable({ data }: Props) {
               setPage(1)
             }}
           >
-            <SelectTrigger className="w-20 h-8">
+            <SelectTrigger className="w-20 h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[10, 20, 50].map(n => (
+              {[10, 20, 50, 100].map(n => (
                 <SelectItem key={n} value={String(n)}>
                   {n}
                 </SelectItem>
@@ -225,6 +255,7 @@ export function SmartDistanceTable({ data }: Props) {
             <PaginationItem>
               <PaginationPrevious
                 onClick={() => setPage(p => Math.max(1, p - 1))}
+                className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
               />
             </PaginationItem>
 
@@ -235,6 +266,7 @@ export function SmartDistanceTable({ data }: Props) {
                   <PaginationLink
                     isActive={p === page}
                     onClick={() => setPage(p)}
+                    className="cursor-pointer"
                   >
                     {p}
                   </PaginationLink>
@@ -245,10 +277,18 @@ export function SmartDistanceTable({ data }: Props) {
             <PaginationItem>
               <PaginationNext
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
               />
             </PaginationItem>
           </PaginationContent>
         </Pagination>
+
+        {/* Total count */}
+        <div className="text-sm text-gray-600">
+          Showing <span className="font-medium">{(page - 1) * pageSize + 1}</span> to{' '}
+          <span className="font-medium">{Math.min(page * pageSize, data.length)}</span> of{' '}
+          <span className="font-medium">{data.length}</span> results
+        </div>
       </div>
     </div>
   )
