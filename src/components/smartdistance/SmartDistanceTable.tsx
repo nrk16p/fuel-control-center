@@ -133,7 +133,6 @@ export function SmartDistanceTable({ data }: Props) {
                 OSRM <InfoTooltip text="คำนวณจาก Map API" />
               </th>
 
-              <th rowSpan={2} className={styles.thCenter}>Status</th>
               <th rowSpan={2} className={styles.thCenter}>Map</th>
             </tr>
 
@@ -204,11 +203,6 @@ export function SmartDistanceTable({ data }: Props) {
                   {fmt(row.osrm_distance_km_s2p)}
                 </td>
 
-                <td className={`${styles.tdCenter} text-sm`}>
-                  <span className="inline-flex items-center">
-                    {getStatus(row)}
-                  </span>
-                </td>
 
                 <td className={styles.tdCenter}>
                   <Link 
