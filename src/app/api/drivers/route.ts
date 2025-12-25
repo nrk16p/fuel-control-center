@@ -4,33 +4,39 @@ import { ObjectId } from "mongodb"
 
 /* ============================================================================
    GET – list plants (optional filter by client)
-   GET /api/plants
-   GET /api/plants?client=Acon
+   GET /api/driver
+   GET /api/drivers?month=xx&year=xxxx
 ============================================================================ */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const clientName = searchParams.get("client")
+
+    const month = Number(searchParams.get("month"))
+    const year = Number(searchParams.get("year"))
+
+    // console.log("GET month, year:", month, year)
 
     const client = await clientPromise
     const db = client.db("atms")
-    const col = db.collection("plants")
+    const col = db.collection("drivers_risk")
 
-    const query: any = {}
-    if (clientName) query.client = clientName
-
-    const data = await col.find(query).sort({ plant_code: 1 }).toArray()
+    const data = await col
+      .find({
+        month,
+        year,
+      })
+      .sort({ driver: 1 })
+      .toArray()
 
     return NextResponse.json(data)
   } catch (error) {
-    console.error("❌ GET plants error:", error)
+    console.error("❌ GET drivers error:", error)
     return NextResponse.json(
-      { error: "Failed to fetch plants" },
+      { error: "Failed to fetch drivers" },
       { status: 500 }
     )
   }
 }
-
 /* ============================================================================
    POST – create new plant
    POST /api/plants

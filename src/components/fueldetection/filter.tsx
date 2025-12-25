@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState,useEffect, use } from "react"
 import { DateRange } from "@/components/ui/daterange"
+import PlateDropdown from "./platelist"
 
 interface FuelDetectionFilterProps {
   query: (filters: {
@@ -26,12 +27,33 @@ export function FuelDetectionFilter({ query, isLoading }: FuelDetectionFilterPro
 
   const [dateRange, setDateRange] = useState({ from: startDate, to: yesterday })
   const [plateDriver, setPlateDriver] = useState("")
+  const [plateList, setPlateList] = useState<string[]>([])
   const [statuses, setStatuses] = useState<string[]>([]) // empty = all
   const [movingOnly, setMovingOnly] = useState(false)
 
   // ✅ new UX
   const [showReviewed, setShowReviewed] = useState(true)
   const [showUnreviewed, setShowUnreviewed] = useState(true)
+
+useEffect(() => {
+  if (!dateRange.from && !dateRange.to) return
+   load_plates(dateRange)
+ }, [dateRange])
+
+ const load_plates = async (dateRange: { from: Date; to: Date }) => { 
+
+      const params = new URLSearchParams({
+      month: [String(dateRange.from.getMonth() + 1), String(dateRange.to.getMonth() + 1)].join(","),
+      year: [String(dateRange.from.getFullYear()), String(dateRange.to.getFullYear())].join(","),
+    })
+
+    console.log("Fetching Plates:", params.toString())
+
+    const res = await fetch(`/api/fuel-listplate?${params.toString()}`)
+    const db = await res.json()
+    setPlateList(db)
+    console.log("plate:", db)
+  }
 
   const formatDate = (d?: Date) =>
     d
@@ -68,13 +90,7 @@ export function FuelDetectionFilter({ query, isLoading }: FuelDetectionFilterPro
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">Plate</label>
-          <input
-            className="h-9 w-56 rounded-md border px-2 text-sm"
-            value={plateDriver}
-            onChange={e => setPlateDriver(e.target.value)}
-            placeholder="71-8623"
-          />
+          <PlateDropdown plateList={plateList} value={plateDriver} onChange={setPlateDriver} />
         </div>
 
         <div className="flex flex-col gap-1">

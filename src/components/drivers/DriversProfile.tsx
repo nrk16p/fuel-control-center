@@ -10,14 +10,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
+import Swal from "sweetalert2"
 /* ================= Types ================= */
 export interface Driver {
   _id: string
@@ -26,6 +19,7 @@ export interface Driver {
   update: string
   status: string
   driver: string
+  updated_at: any
 }
 
 /* ================= Config ================= */
@@ -62,16 +56,36 @@ export default function DriverProfile() {
   })
 
   /* ================= Fetch ================= */
-  const loadDrivers = async () => {
-    const res = await fetch("/api/drivers")
+  const loadDrivers = async (month: string, year: number) => {
+    const params = new URLSearchParams({
+      month: String(months.indexOf(month) + 1),
+      year: String(year),
+    })
+
+    console.log("Fetching drivers with params:", params.toString())
+
+    const res = await fetch(`/api/drivers?${params.toString()}`)
     const json = await res.json()
+
     console.log("drivers:", json)
     setDrivers(json)
   }
+ 
+  useEffect(() => {   
+    if (!activeMonth || !activeYear) return  /* โหลดครั้งแรก + เมื่อเดือน/ปีเปลี่ยน */
+    loadDrivers(activeMonth, activeYear)
+  }, [activeMonth, activeYear])
 
-  // useEffect(() => {
-  //   loadDrivers()
-  // }, [])
+  /* ================= Nav Change ================= */
+  const handleNavChange = (type: string, value: string) => {
+    console.log("Nav change:", type, value)
+
+    if (type === "month") {
+      setActiveMonth(value)
+    } else if (type === "year") {
+      setActiveYear(Number(value))
+    }
+  }
 
 
   /* ================= Filter ================= */
@@ -121,28 +135,32 @@ export default function DriverProfile() {
     setOpen(false)
     setEditing(null)
     setForm({ truckno: "", plateh: "", update: "", status: "", driver: "" })
-    loadDrivers()
   }
 
   /* ================= Delete ================= */
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this plant?")) return
+    if (!confirm("ต้องการลบรายการกลุ่มเสี่ยงนี้ หรือไม่?")) return
     await fetch(`/api/plants?id=${id}`, { method: "DELETE" })
-    loadDrivers()
+    setDrivers(drivers.filter((p) => p._id !== id))
+    Swal.fire({
+      title: "ลบรายการสำเร็จ!",
+      icon: "success",
+      draggable: true
+    });
   }
 
   /* ================= Edit ================= */
-  const openEdit = (p: Driver) => {
-    setEditing(p)
-    setForm({
-      truckno: p.truckno,
-      plateh: p.plateh,
-      update: String(p.update),
-      status: String(p.status),
-      driver: p.driver,
-    })
-    setOpen(true)
-  }
+  // const openEdit = (p: Driver) => {
+  //   setEditing(p)
+  //   setForm({
+  //     truckno: p.truckno,
+  //     plateh: p.plateh,
+  //     update: String(p.update),
+  //     status: String(p.status),
+  //     driver: p.driver,
+  //   })
+  //   setOpen(true)
+  // }
 
   const handleProcess = (value: string) => {
   const entries = value.match(/[\u0E00-\u0E7F]+ [\u0E00-\u0E7F]+/g) || []
@@ -157,6 +175,7 @@ export default function DriverProfile() {
   }
 
 
+
   return (
     <>
       <div className="relative flex flex-wrap rounded-lg bg-gray-200 p-1 lg:w-1/2 mb-5 text-sm shadow-sm">
@@ -167,7 +186,7 @@ export default function DriverProfile() {
               name="viewType"
               value={year}
               checked={activeYear === year}
-              onChange={() => setActiveYear(year)}
+              onChange={() => handleNavChange("year", String(year))}
               className="hidden"
             />
             <span className={`flex items-center justify-center gap-2 rounded-md border-none py-2 px-4 transition-all duration-150 ease-in-out ${activeYear === year
@@ -189,7 +208,7 @@ export default function DriverProfile() {
               name="viewType"
               value={month}
               checked={activeMonth === month}
-              onChange={() => setActiveMonth(month)}
+              onChange={() => handleNavChange("month", month)}
               className="hidden"
             />
             <span className={`flex items-center justify-center gap-2 rounded-md border-none py-2 px-4 transition-all duration-150 ease-in-out ${activeMonth === month
@@ -235,23 +254,23 @@ export default function DriverProfile() {
           </thead>
 
           <tbody>
-            {/* { filteredDriver.map((p) => (
+            { filteredDriver.map((p) => (
               <tr
                 key={p._id}
                 className={`border-t hover:bg-gray-50 ${ROW_HEIGHT}`}
               >
-                <td className="p-2">{p.client}</td>
-                <td className="p-2 font-medium">{p.plant_code}</td>
-                <td className="p-2 text-center">{p.Latitude}</td>
-                <td className="p-2 text-center">กลุ่มเสี่ยง</td>
+                <td className="p-2">{p.truckno}</td>
+                <td className="p-2 font-medium">{p.plateh}</td>
+                <td className="p-2 text-center">{p.driver}</td>
+                <td className="p-2 text-center">{new Date(p.updated_at).toLocaleDateString()}</td>
                 <td className="p-2 text-right space-x-2">
-                  <Button
+                  {/* <Button
                     size="sm"
                     variant="outline"
                     onClick={() => openEdit(p)}
                   >
                     ✏️
-                  </Button>
+                  </Button> */}
                   <Button
                     size="sm"
                     variant="destructive"
@@ -261,7 +280,7 @@ export default function DriverProfile() {
                   </Button>
                 </td>
               </tr>
-            ))} */}
+            ))}
 
             {/* 🧱 EMPTY ROWS TO FIX 20 ROWS */}
             {Array.from({ length: emptyRowCount }).map((_, i) => (
