@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import dynamic from "next/dynamic"
+import type { Map as LeafletMap } from "leaflet"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import "leaflet/dist/leaflet.css"
@@ -40,8 +41,8 @@ type GeoFeature = {
     coordinates: number[][]
   }
   properties: {
-    plant?: [number, number]
-    site?: [number, number]
+    plant?: [number, number] // [lng, lat]
+    site?: [number, number] // [lng, lat]
     timestamps?: string[]
   }
 }
@@ -84,6 +85,7 @@ export default function SmartDistanceMapPage() {
   const [playing, setPlaying] = useState(false)
   const [speedMs, setSpeedMs] = useState(800)
 
+  const mapRef = useRef<LeafletMap | null>(null)
   const leafletRef = useRef<any>(null)
 
   /* ---------- Load Leaflet + plugin ---------- */
@@ -101,7 +103,7 @@ export default function SmartDistanceMapPage() {
     }
   }, [])
 
-  /* ---------- Fetch geo ---------- */
+  /* ---------- Fetch geo data ---------- */
   useEffect(() => {
     setLoading(true)
     setGeojson(null)
@@ -126,12 +128,14 @@ export default function SmartDistanceMapPage() {
     setCursor(c => clamp(c, 0, coords.length - 1))
   }, [coords.length])
 
+  /* ---------- Center ---------- */
   const center = useMemo<[number, number]>(() => {
     if (!coords.length) return [13.7, 100.6]
     const mid = coords[Math.floor(coords.length / 2)]
     return [mid[1], mid[0]]
   }, [coords])
 
+  /* ---------- Split route ---------- */
   const splitIndex = Math.floor(coords.length / 2)
   const p2s = coords.slice(0, splitIndex)
   const s2p = coords.slice(splitIndex)
@@ -147,6 +151,7 @@ export default function SmartDistanceMapPage() {
     return s2p.slice(0, clamp(rel + 1, 0, s2p.length))
   }, [s2p, cursor, splitIndex])
 
+  /* ---------- Current position ---------- */
   const currentPosition = useMemo<[number, number] | null>(() => {
     if (!coords[cursor]) return null
     const [lng, lat] = coords[cursor]
@@ -162,7 +167,18 @@ export default function SmartDistanceMapPage() {
     return () => clearInterval(id)
   }, [playing, coords.length, speedMs])
 
-  /* ---------- Arrow ---------- */
+  /* ---------- Map zoom listener (SAFE) ---------- */
+  useEffect(() => {
+    if (!mapRef.current) return
+    const map = mapRef.current
+    const onZoom = () => setZoom(map.getZoom())
+    map.on("zoomend", onZoom)
+    return () => {
+      map.off("zoomend", onZoom)
+    }
+  }, [])
+
+  /* ---------- Arrow helper ---------- */
   const applyArrow = (polyline: any, color: string) => {
     const L = leafletRef.current
     if (!L || zoom < 12 || typeof polyline.setText !== "function") return
@@ -195,26 +211,81 @@ export default function SmartDistanceMapPage() {
      Render
 ================================ */
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <CardTitle>🗺️ Smart Distance – {TicketNo}</CardTitle>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={showP2S ? "default" : "outline"}
+              onClick={() => setShowP2S(v => !v)}
+            >
+              Plant → Site
+            </Button>
+            <Button
+              size="sm"
+              variant={showS2P ? "default" : "outline"}
+              onClick={() => setShowS2P(v => !v)}
+            >
+              Site → Plant
+            </Button>
+            <Button
+              size="sm"
+              variant={playing ? "default" : "outline"}
+              onClick={() => setPlaying(p => !p)}
+              disabled={!coords.length}
+            >
+              {playing ? "⏸ Pause" : "▶️ Play"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setPlaying(false)
+                setCursor(0)
+              }}
+              disabled={!coords.length}
+            >
+              ⟲ Reset
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent>
           {loading ? (
-            <div className="text-gray-500">Loading…</div>
+            <div className="text-gray-500">Loading map…</div>
           ) : !feature ? (
-            <div className="text-gray-500">No data</div>
+            <div className="text-gray-500">No geo data</div>
           ) : (
             <>
+              {/* ---------- Timeline ---------- */}
+              <div className="mb-4 space-y-2">
+                <div className="text-xs text-gray-600">
+                  <b>Start:</b> {fmtTime(timestamps[0])} •{" "}
+                  <b>Now:</b> {fmtTime(timestamps[cursor])} •{" "}
+                  <b>End:</b> {fmtTime(timestamps[timestamps.length - 1])}
+                </div>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(0, coords.length - 1)}
+                  value={cursor}
+                  onChange={e => {
+                    setPlaying(false)
+                    setCursor(Number(e.target.value))
+                  }}
+                  className="w-full"
+                />
+              </div>
+
+              {/* ---------- Map ---------- */}
               <MapContainer
+                ref={mapRef}
                 center={center}
                 zoom={zoom}
-                whenReady={e => {
-                  const map = e.target
-                  map.on("zoomend", () => setZoom(map.getZoom()))
-                }}
                 style={{ height: "70vh", width: "100%" }}
               >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -230,7 +301,11 @@ export default function SmartDistanceMapPage() {
                 {showS2P && activeS2P.length > 1 && (
                   <Polyline
                     positions={activeS2P.map(([lng, lat]) => [lat, lng])}
-                    pathOptions={{ color: "#16a34a", weight: 5, dashArray: "6 6" }}
+                    pathOptions={{
+                      color: "#16a34a",
+                      weight: 5,
+                      dashArray: "6 6",
+                    }}
                     eventHandlers={{ add: e => applyArrow(e.target, "#16a34a") }}
                   />
                 )}
