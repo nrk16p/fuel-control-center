@@ -75,7 +75,7 @@ export default function Navbar() {
 
           {/* Master Data */}
           <NavigationMenuItem>
-            <NavigationMenuTrigger>🏭 Master Data</NavigationMenuTrigger>
+            <NavigationMenuTrigger> 🗂️ Master Data</NavigationMenuTrigger>
             <NavigationMenuContent>
               <ul className="grid w-55 gap-1 p-2">
                 <li>
@@ -96,14 +96,7 @@ export default function Navbar() {
             </NavigationMenuContent>
           </NavigationMenuItem>
 
-          {/* Settings */}
-          <NavigationMenuItem>
-            <Link href="/settings" legacyBehavior passHref>
-              <NavigationMenuLink className="nav-link">
-                ⚙️ Settings
-              </NavigationMenuLink>
-            </Link>
-          </NavigationMenuItem>
+
 
         </NavigationMenuList>
       </NavigationMenu>
