@@ -40,16 +40,9 @@ type GeoFeature = {
     coordinates: number[][]
   }
   properties: {
-    plant?: [number, number] // [lng, lat]
-    site?: [number, number] // [lng, lat]
-    logic_version?: string
-    timestamps?: string[] // ✅ per-point time (ISO)
-    TicketNo?: string
-    TruckPlateNo?: string
-    PlantCode?: string
-    SiteCode?: string
-    loop_start_at?: string
-    loop_end_at?: string
+    plant?: [number, number]
+    site?: [number, number]
+    timestamps?: string[]
   }
 }
 
@@ -59,13 +52,14 @@ type GeoJSONData = {
 }
 
 /* ===============================
-   Small helpers
+   Helpers
 ================================ */
 function fmtTime(ts?: string) {
   if (!ts) return "-"
   const d = new Date(ts)
-  if (Number.isNaN(d.getTime())) return ts
-  return d.toLocaleString("th-TH", { hour12: false })
+  return Number.isNaN(d.getTime())
+    ? ts
+    : d.toLocaleString("th-TH", { hour12: false })
 }
 
 function clamp(n: number, min: number, max: number) {
@@ -84,33 +78,30 @@ export default function SmartDistanceMapPage() {
   const [showP2S, setShowP2S] = useState(true)
   const [showS2P, setShowS2P] = useState(true)
 
-  // zoom state for arrow rendering
   const [zoom, setZoom] = useState(13)
 
-  // replay states
   const [cursor, setCursor] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const [speedMs, setSpeedMs] = useState(800) // frame step (ms)
+  const [speedMs, setSpeedMs] = useState(800)
 
-  // Leaflet ref (client only)
-  const LRef = useRef<any>(null)
+  const leafletRef = useRef<any>(null)
 
-  /* ---------- Load Leaflet + plugin (client only) ---------- */
+  /* ---------- Load Leaflet + plugin ---------- */
   useEffect(() => {
     let mounted = true
-    async function loadLeaflet() {
+    async function load() {
       if (typeof window === "undefined") return
       const L = (await import("leaflet")).default
       await import("leaflet-textpath")
-      if (mounted) LRef.current = L
+      if (mounted) leafletRef.current = L
     }
-    loadLeaflet()
+    load()
     return () => {
       mounted = false
     }
   }, [])
 
-  /* ---------- Fetch geo data ---------- */
+  /* ---------- Fetch geo ---------- */
   useEffect(() => {
     setLoading(true)
     setGeojson(null)
@@ -124,95 +115,57 @@ export default function SmartDistanceMapPage() {
       .finally(() => setLoading(false))
   }, [TicketNo])
 
-  /* ---------- Safe access ---------- */
   const feature = geojson?.features?.[0]
   const coords = feature?.geometry.coordinates ?? []
   const plant = feature?.properties.plant
   const site = feature?.properties.site
-
   const timestamps = feature?.properties.timestamps ?? []
 
-  // normalize time once
-  const timePoints = useMemo(() => {
-    return timestamps.map(t => new Date(t).getTime())
-  }, [timestamps])
-
-  // keep cursor in range if data changes
   useEffect(() => {
     if (!coords.length) return
     setCursor(c => clamp(c, 0, coords.length - 1))
   }, [coords.length])
 
-  /* ---------- Center ---------- */
   const center = useMemo<[number, number]>(() => {
     if (!coords.length) return [13.7, 100.6]
     const mid = coords[Math.floor(coords.length / 2)]
     return [mid[1], mid[0]]
   }, [coords])
 
-  /* ---------- Split route ----------
-     NOTE: split by first time we are near SITE radius is best,
-     but for now keep simple: half split (as your original).
-     You can upgrade later using state/timestamps.
-  ---------------------------------- */
   const splitIndex = Math.floor(coords.length / 2)
   const p2s = coords.slice(0, splitIndex)
   const s2p = coords.slice(splitIndex)
 
-  /* ---------- Progressive lines for replay ---------- */
-  const activeLine = useMemo(() => {
-    if (!coords.length) return []
-    return coords.slice(0, cursor + 1)
-  }, [coords, cursor])
-
-  const activeP2S = useMemo(() => {
-    const end = clamp(cursor + 1, 0, p2s.length)
-    return p2s.slice(0, end)
-  }, [p2s, cursor])
+  const activeP2S = useMemo(
+    () => p2s.slice(0, clamp(cursor + 1, 0, p2s.length)),
+    [p2s, cursor]
+  )
 
   const activeS2P = useMemo(() => {
-    // when cursor passes splitIndex, reveal S2P
     const rel = cursor - splitIndex
     if (rel < 0) return []
-    const end = clamp(rel + 1, 0, s2p.length)
-    return s2p.slice(0, end)
+    return s2p.slice(0, clamp(rel + 1, 0, s2p.length))
   }, [s2p, cursor, splitIndex])
 
-  /* ---------- Current position ---------- */
   const currentPosition = useMemo<[number, number] | null>(() => {
     if (!coords[cursor]) return null
     const [lng, lat] = coords[cursor]
     return [lat, lng]
   }, [coords, cursor])
 
-  const currentTs = timestamps[cursor]
-  const startTs = timestamps[0]
-  const endTs = timestamps[timestamps.length - 1]
-
-  /* ---------- Playback engine ---------- */
+  /* ---------- Playback ---------- */
   useEffect(() => {
-    if (!playing) return
-    if (coords.length < 2) return
-
+    if (!playing || coords.length < 2) return
     const id = window.setInterval(() => {
-      setCursor(c => {
-        if (c >= coords.length - 1) {
-          setPlaying(false)
-          return c
-        }
-        return c + 1
-      })
+      setCursor(c => (c >= coords.length - 1 ? c : c + 1))
     }, speedMs)
-
-    return () => window.clearInterval(id)
+    return () => clearInterval(id)
   }, [playing, coords.length, speedMs])
 
-  /* ---------- Arrow helper ---------- */
+  /* ---------- Arrow ---------- */
   const applyArrow = (polyline: any, color: string) => {
-    if (!LRef.current) return
-    if (zoom < 12) return
-    if (typeof polyline.setText !== "function") return
-
+    const L = leafletRef.current
+    if (!L || zoom < 12 || typeof polyline.setText !== "function") return
     polyline.setText(null)
     polyline.setText(" ▶ ", {
       repeat: true,
@@ -225,187 +178,63 @@ export default function SmartDistanceMapPage() {
     })
   }
 
-  /* ---------- Emoji Icons ---------- */
-  const plantIcon = useMemo(() => {
-    const L = LRef.current
-    if (!L) return undefined
-    return L.divIcon({
-      html: "🏭",
+  /* ---------- Icons ---------- */
+  const makeIcon = (emoji: string) =>
+    leafletRef.current?.divIcon({
+      html: emoji,
       className: "",
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     })
-  }, [LRef.current])
 
-  const siteIcon = useMemo(() => {
-    const L = LRef.current
-    if (!L) return undefined
-    return L.divIcon({
-      html: "📍",
-      className: "",
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-    })
-  }, [LRef.current])
-
-  const truckIcon = useMemo(() => {
-    const L = LRef.current
-    if (!L) return undefined
-    return L.divIcon({
-      html: "🚚",
-      className: "",
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-    })
-  }, [LRef.current])
-
-  const hasTime = timestamps.length === coords.length && timestamps.length > 0
+  const plantIcon = useMemo(() => makeIcon("🏭"), [leafletRef.current])
+  const siteIcon = useMemo(() => makeIcon("📍"), [leafletRef.current])
+  const truckIcon = useMemo(() => makeIcon("🚚"), [leafletRef.current])
 
   /* ===============================
      Render
 ================================ */
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6">
       <Card>
-        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <CardHeader>
           <CardTitle>🗺️ Smart Distance – {TicketNo}</CardTitle>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant={showP2S ? "default" : "outline"}
-              onClick={() => setShowP2S(v => !v)}
-            >
-              Plant → Site
-            </Button>
-            <Button
-              size="sm"
-              variant={showS2P ? "default" : "outline"}
-              onClick={() => setShowS2P(v => !v)}
-            >
-              Site → Plant
-            </Button>
-
-            <Button
-              size="sm"
-              variant={playing ? "default" : "outline"}
-              onClick={() => setPlaying(p => !p)}
-              disabled={!coords.length}
-            >
-              {playing ? "⏸ Pause" : "▶️ Play"}
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setPlaying(false)
-                setCursor(0)
-              }}
-              disabled={!coords.length}
-            >
-              ⟲ Reset
-            </Button>
-          </div>
         </CardHeader>
 
         <CardContent>
           {loading ? (
-            <div className="text-gray-500">Loading map…</div>
+            <div className="text-gray-500">Loading…</div>
           ) : !feature ? (
-            <div className="text-gray-500">No geo data</div>
+            <div className="text-gray-500">No data</div>
           ) : (
             <>
-              {/* ---------- Timeline / Slider ---------- */}
-              <div className="mb-4 space-y-2">
-                <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                  <div className="text-xs text-gray-600">
-                    <span className="font-medium">Start:</span> {fmtTime(startTs)}{" "}
-                    <span className="mx-2">•</span>
-                    <span className="font-medium">Now:</span> {fmtTime(currentTs)}{" "}
-                    <span className="mx-2">•</span>
-                    <span className="font-medium">End:</span> {fmtTime(endTs)}
-                  </div>
-
-                  <div className="text-xs text-gray-600">
-                    Point <span className="font-medium">{cursor + 1}</span> /{" "}
-                    {coords.length}
-                    {!hasTime && (
-                      <span className="ml-2 text-orange-600">
-                        (no timestamps)
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <input
-                  type="range"
-                  min={0}
-                  max={Math.max(0, coords.length - 1)}
-                  value={cursor}
-                  onChange={e => {
-                    setPlaying(false)
-                    setCursor(Number(e.target.value))
-                  }}
-                  className="w-full"
-                />
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-600">Speed</span>
-                  <input
-                    type="range"
-                    min={150}
-                    max={2000}
-                    step={50}
-                    value={speedMs}
-                    onChange={e => setSpeedMs(Number(e.target.value))}
-                    className="w-56"
-                  />
-                  <span className="text-xs text-gray-600">{speedMs}ms</span>
-                </div>
-              </div>
-
-              {/* ---------- Map ---------- */}
               <MapContainer
-                key={TicketNo}
                 center={center}
                 zoom={zoom}
-                whenCreated={map =>
+                whenReady={e => {
+                  const map = e.target
                   map.on("zoomend", () => setZoom(map.getZoom()))
-                }
+                }}
                 style={{ height: "70vh", width: "100%" }}
               >
-                <TileLayer
-                  attribution="© OpenStreetMap"
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-                {/* Progressive: show only up to cursor */}
                 {showP2S && activeP2S.length > 1 && (
                   <Polyline
                     positions={activeP2S.map(([lng, lat]) => [lat, lng])}
                     pathOptions={{ color: "#2563eb", weight: 5 }}
-                    eventHandlers={{
-                      add: e => applyArrow(e.target, "#2563eb"),
-                    }}
+                    eventHandlers={{ add: e => applyArrow(e.target, "#2563eb") }}
                   />
                 )}
 
                 {showS2P && activeS2P.length > 1 && (
                   <Polyline
                     positions={activeS2P.map(([lng, lat]) => [lat, lng])}
-                    pathOptions={{
-                      color: "#16a34a",
-                      weight: 5,
-                      dashArray: "6 6",
-                    }}
-                    eventHandlers={{
-                      add: e => applyArrow(e.target, "#16a34a"),
-                    }}
+                    pathOptions={{ color: "#16a34a", weight: 5, dashArray: "6 6" }}
+                    eventHandlers={{ add: e => applyArrow(e.target, "#16a34a") }}
                   />
                 )}
 
-                {/* Current truck marker */}
                 {currentPosition && truckIcon && (
                   <Marker position={currentPosition} icon={truckIcon} />
                 )}
@@ -413,34 +242,17 @@ export default function SmartDistanceMapPage() {
                 {plant && plantIcon && (
                   <>
                     <Marker position={[plant[1], plant[0]]} icon={plantIcon} />
-                    <Circle
-                      center={[plant[1], plant[0]]}
-                      radius={200}
-                      pathOptions={{ color: "#16a34a" }}
-                    />
+                    <Circle center={[plant[1], plant[0]]} radius={200} />
                   </>
                 )}
 
                 {site && siteIcon && (
                   <>
                     <Marker position={[site[1], site[0]]} icon={siteIcon} />
-                    <Circle
-                      center={[site[1], site[0]]}
-                      radius={200}
-                      pathOptions={{ color: "#f97316" }}
-                    />
+                    <Circle center={[site[1], site[0]]} radius={200} />
                   </>
                 )}
               </MapContainer>
-
-              {/* Legend */}
-              <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-600">
-                <span>🔵 Plant → Site</span>
-                <span>🟢 Site → Plant</span>
-                <span>🏭 Plant (200m)</span>
-                <span>📍 Site (200m)</span>
-                <span>🚚 Current position</span>
-              </div>
             </>
           )}
         </CardContent>
