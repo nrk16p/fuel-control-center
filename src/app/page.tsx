@@ -56,7 +56,7 @@ export default function HomePage() {
       title: "⚙️ Data Pipeline",
       nav: "pipeline",
       desc: "ระบบประมวลผลข้อมูลอัตโนมัติ",
-      value: "ข้อมูลทันเวลา",
+      value: "ฐานข้อมูล",
     },
   ]
 
