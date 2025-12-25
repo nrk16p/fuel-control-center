@@ -6,9 +6,13 @@ import {
   SmartDistanceTable,
   SmartDistanceRow,
 } from "@/components/smartdistance/SmartDistanceTable"
+import {
+  SmartDistanceFilters,
+  AllOrNumber,
+} from "@/components/smartdistance/SmartDistanceFilters"
 
 /* -------------------------------------------------
-   Current month / year (DEFAULT)
+   Current month / year
 ------------------------------------------------- */
 const now = new Date()
 const CURRENT_MONTH = now.getMonth() + 1
@@ -20,11 +24,11 @@ export default function SmartDistancePage() {
 
   /* ---------------- Filters ---------------- */
   const [search, setSearch] = useState("")
-  const [month, setMonth] = useState<number | "all">(CURRENT_MONTH)
-  const [year, setYear] = useState<number | "all">(CURRENT_YEAR)
+  const [month, setMonth] = useState<AllOrNumber>(CURRENT_MONTH)
+  const [year, setYear] = useState<AllOrNumber>(CURRENT_YEAR)
 
   /* -------------------------------------------------
-     🔄 Fetch data (SYNC WITH FILTER)
+     Fetch data (SYNC WITH FILTER)
   ------------------------------------------------- */
   useEffect(() => {
     setLoading(true)
@@ -34,7 +38,7 @@ export default function SmartDistancePage() {
     if (month !== "all") params.append("month", String(month))
 
     fetch(`/api/smartdistance?${params.toString()}`)
-      .then(r => r.json())
+      .then((r) => r.json())
       .then((d: SmartDistanceRow[]) => {
         setData(d)
       })
@@ -50,7 +54,7 @@ export default function SmartDistancePage() {
     const q = search.toLowerCase()
 
     return data.filter(
-      d =>
+      (d) =>
         d.TicketNo.toLowerCase().includes(q) ||
         d.TruckPlateNo?.toLowerCase().includes(q)
     )
@@ -66,7 +70,7 @@ export default function SmartDistancePage() {
   }
 
   /* -------------------------------------------------
-     Export (export filtered)
+     Export
   ------------------------------------------------- */
   const handleExport = () => {
     exportToExcel(
@@ -98,62 +102,18 @@ export default function SmartDistancePage() {
       </div>
 
       {/* ================= Filters ================= */}
-      <div className="flex flex-wrap gap-3 items-center text-sm">
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search Ticket / Plate"
-          className="border rounded px-3 py-1"
-        />
-
-        <select
-          value={month}
-          onChange={e =>
-            setMonth(
-              e.target.value === "all"
-                ? "all"
-                : Number(e.target.value)
-            )
-          }
-          className="border rounded px-2 py-1"
-        >
-          <option value="all">All months</option>
-          {Array.from({ length: 12 }).map((_, i) => (
-            <option key={i + 1} value={i + 1}>
-              {i + 1}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={year}
-          onChange={e =>
-            setYear(
-              e.target.value === "all"
-                ? "all"
-                : Number(e.target.value)
-            )
-          }
-          className="border rounded px-2 py-1"
-        >
-          <option value="all">All years</option>
-          {Array.from({ length: 5 }).map((_, i) => {
-            const y = CURRENT_YEAR - i
-            return (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            )
-          })}
-        </select>
-
-        <button
-          onClick={resetFilters}
-          className="text-blue-600 underline"
-        >
-          Reset
-        </button>
-      </div>
+      <SmartDistanceFilters
+        search={search}
+        setSearch={setSearch}
+        month={month}
+        setMonth={setMonth}
+        year={year}
+        setYear={setYear}
+        yearOptions={Array.from({ length: 5 }).map(
+          (_, i) => CURRENT_YEAR - i
+        )}
+        onReset={resetFilters}
+      />
 
       {/* ================= Table ================= */}
       {loading ? (
