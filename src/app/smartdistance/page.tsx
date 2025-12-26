@@ -19,16 +19,22 @@ const CURRENT_MONTH = now.getMonth() + 1
 const CURRENT_YEAR = now.getFullYear()
 
 export default function SmartDistancePage() {
+  /* ---------------- Data ---------------- */
   const [data, setData] = useState<SmartDistanceRow[]>([])
   const [loading, setLoading] = useState(true)
 
   /* ---------------- Filters ---------------- */
   const [search, setSearch] = useState("")
+
+  const [plantCode, setPlantCode] = useState("")
+  const [siteCode, setSiteCode] = useState("")
+
   const [month, setMonth] = useState<AllOrNumber>(CURRENT_MONTH)
   const [year, setYear] = useState<AllOrNumber>(CURRENT_YEAR)
 
   /* -------------------------------------------------
-     Fetch data (SYNC WITH FILTER)
+     Fetch data (SYNC WITH DATE FILTER)
+     → ดึงตาม year / month เท่านั้น
   ------------------------------------------------- */
   useEffect(() => {
     setLoading(true)
@@ -47,24 +53,41 @@ export default function SmartDistancePage() {
   }, [year, month])
 
   /* -------------------------------------------------
-     Client-side filter (search)
+     Client-side filter
+     (search + plant + site)
   ------------------------------------------------- */
   const filtered = useMemo(() => {
-    if (!search) return data
-    const q = search.toLowerCase()
+    return data.filter((d) => {
+      /* 🔍 search */
+      if (
+        search &&
+        !d.TicketNo.toLowerCase().includes(search.toLowerCase()) &&
+        !d.TruckPlateNo?.toLowerCase().includes(search.toLowerCase())
+      ) {
+        return false
+      }
 
-    return data.filter(
-      (d) =>
-        d.TicketNo.toLowerCase().includes(q) ||
-        d.TruckPlateNo?.toLowerCase().includes(q)
-    )
-  }, [data, search])
+      /* 🏭 plant */
+      if (plantCode && d.PlantCode !== plantCode) {
+        return false
+      }
+
+      /* 📍 site */
+      if (siteCode && d.SiteCode !== siteCode) {
+        return false
+      }
+
+      return true
+    })
+  }, [data, search, plantCode, siteCode])
 
   /* -------------------------------------------------
      Reset
   ------------------------------------------------- */
   const resetFilters = () => {
     setSearch("")
+    setPlantCode("")
+    setSiteCode("")
     setMonth(CURRENT_MONTH)
     setYear(CURRENT_YEAR)
   }
@@ -105,6 +128,10 @@ export default function SmartDistancePage() {
       <SmartDistanceFilters
         search={search}
         setSearch={setSearch}
+        plantCode={plantCode}
+        setPlantCode={setPlantCode}
+        siteCode={siteCode}
+        setSiteCode={setSiteCode}
         month={month}
         setMonth={setMonth}
         year={year}

@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Search, RotateCcw } from "lucide-react"
+import { Search, RotateCcw, Factory, MapPin } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
@@ -35,6 +35,12 @@ interface Props {
   search: string
   setSearch: (v: string) => void
 
+  plantCode: string
+  setPlantCode: (v: string) => void
+
+  siteCode: string
+  setSiteCode: (v: string) => void
+
   month: AllOrNumber
   setMonth: (v: AllOrNumber) => void
 
@@ -51,6 +57,10 @@ interface Props {
 export function SmartDistanceFilters({
   search,
   setSearch,
+  plantCode,
+  setPlantCode,
+  siteCode,
+  setSiteCode,
   month,
   setMonth,
   year,
@@ -61,21 +71,34 @@ export function SmartDistanceFilters({
   return (
     <div className="bg-white rounded-xl border shadow-sm p-4 flex flex-wrap gap-4 items-end">
       {/* 🔍 Search */}
-      <div className="w-64">
-        <label className="text-xs text-gray-500">ค้นหา</label>
-        <div className="relative">
-          <Search
-            size={16}
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ticket / ทะเบียนรถ"
-            className="pl-8"
-          />
-        </div>
-      </div>
+      <FilterInput
+        label="ค้นหา"
+        placeholder="Ticket / ทะเบียนรถ"
+        icon={<Search size={16} />}
+        value={search}
+        onChange={setSearch}
+        className="w-64"
+      />
+
+      {/* 🏭 PlantCode */}
+      <FilterInput
+        label="Plant"
+        placeholder="PlantCode"
+        icon={<Factory size={16} />}
+        value={plantCode}
+        onChange={setPlantCode}
+        className="w-40"
+      />
+
+      {/* 📍 SiteCode */}
+      <FilterInput
+        label="Site"
+        placeholder="SiteCode"
+        icon={<MapPin size={16} />}
+        value={siteCode}
+        onChange={setSiteCode}
+        className="w-40"
+      />
 
       {/* Month */}
       <FilterSelect<AllOrNumber>
@@ -121,6 +144,46 @@ export function SmartDistanceFilters({
         <RotateCcw size={16} />
         Reset
       </Button>
+    </div>
+  )
+}
+
+/* -----------------------------
+   Reusable Input
+------------------------------ */
+interface FilterInputProps {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  icon?: React.ReactNode
+  className?: string
+}
+
+function FilterInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  icon,
+  className,
+}: FilterInputProps) {
+  return (
+    <div className={className}>
+      <label className="text-xs text-gray-500">{label}</label>
+      <div className="relative">
+        {icon && (
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">
+            {icon}
+          </span>
+        )}
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={icon ? "pl-8" : ""}
+        />
+      </div>
     </div>
   )
 }

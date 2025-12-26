@@ -34,7 +34,7 @@ const PlateDropdown = ({
 
   return (
     <div ref={wrapperRef} className="relative w-56">
-      <label className="mb-1 block text-xs text-gray-500">Plate</label>
+      <label className="mb-1 block text-xs text-gray-500">Plate (Dropdown สำหรับกลุ่มเสี่ยง)</label>
 
       <input
         className="h-9 w-full rounded-md border px-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"

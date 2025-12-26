@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Pagination,
   PaginationContent,
@@ -48,27 +48,6 @@ export interface SmartDistanceRow {
 const fmt = (v?: number | null) =>
   v == null ? "—" : v.toFixed(2)
 
-function getStatus(row: SmartDistanceRow) {
-  const base = row.rmc_distance_km_p2s
-  const gps = row.gps_distance_km_p2s
-  const osrm = row.osrm_distance_km_p2s
-
-  if (row.is_split_trip) return "🔁 Split trip"
-
-  if (base && osrm) {
-    const diffPct = ((osrm - base) / base) * 100
-    if (diffPct > 20) return "❌ OSRM > RMC +20%"
-    if (diffPct > 10) return "⚠️ OSRM > RMC +10%"
-  }
-
-  if (base && gps) {
-    const diffPct = ((gps - base) / base) * 100
-    if (Math.abs(diffPct) > 10) return "⚠️ GPS deviate"
-  }
-
-  return "✅ OK"
-}
-
 /* -------------------------------------------------
    Tooltip
 ------------------------------------------------- */
@@ -87,11 +66,32 @@ function InfoTooltip({ text }: { text: string }) {
    Styles
 ------------------------------------------------- */
 const styles = {
-  th: "px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200",
-  thCenter: "px-3 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200",
-  thSub: "px-3 py-2 text-center text-xs font-medium text-gray-600 border-b border-gray-200",
+  th: "px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b",
+  thCenter: "px-3 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b",
+  thSub: "px-3 py-2 text-center text-xs font-medium text-gray-600 border-b",
   td: "px-3 py-3 text-sm",
   tdCenter: "px-3 py-3 text-sm text-center",
+}
+
+/* -------------------------------------------------
+   Pagination helper
+------------------------------------------------- */
+function getPages(page: number, total: number) {
+  const delta = 2
+  const pages: (number | "...")[] = []
+
+  for (let i = 1; i <= total; i++) {
+    if (
+      i === 1 ||
+      i === total ||
+      (i >= page - delta && i <= page + delta)
+    ) {
+      pages.push(i)
+    } else if (pages[pages.length - 1] !== "...") {
+      pages.push("...")
+    }
+  }
+  return pages
 }
 
 /* -------------------------------------------------
@@ -105,6 +105,11 @@ export function SmartDistanceTable({ data }: Props) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
+  /* reset page when data changes */
+  useEffect(() => {
+    setPage(1)
+  }, [data])
+
   const totalPages = Math.max(1, Math.ceil(data.length / pageSize))
 
   const pageData = useMemo(() => {
@@ -115,7 +120,7 @@ export function SmartDistanceTable({ data }: Props) {
   return (
     <div className="space-y-4">
       {/* ===== Table ===== */}
-      <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
+      <div className="overflow-x-auto border rounded-lg shadow-sm">
         <table className="w-full">
           <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
@@ -146,69 +151,56 @@ export function SmartDistanceTable({ data }: Props) {
             </tr>
           </thead>
 
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y">
             {pageData.map(row => (
-              <tr
-                key={row.TicketNo}
-                className="hover:bg-gray-50 transition-colors"
-              >
+              <tr key={row.TicketNo} className="hover:bg-gray-50">
                 <td className={styles.td}>
                   <Link
                     href={`/smartdistance/${row.TicketNo}`}
-                    className="text-blue-600 hover:text-blue-800 font-medium"
+                    className="text-blue-600 font-medium"
                   >
                     {row.TicketNo}
                   </Link>
                   {row.TicketCreateAt && (
                     <div className="text-xs text-gray-500 mt-1">
-                      {new Date(row.TicketCreateAt).toLocaleString('en-GB', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                      {new Date(row.TicketCreateAt).toLocaleString("en-GB")}
                     </div>
                   )}
                 </td>
 
                 <td className={styles.td}>
-                  <div className="font-medium text-gray-900">{row.TruckPlateNo}</div>
+                  <div className="font-medium">{row.TruckPlateNo}</div>
                   <div className="text-xs text-gray-500">{row.TruckNo}</div>
                 </td>
 
                 <td className={`${styles.td} text-xs`}>
-                  <div className="font-medium text-gray-900">{row.PlantCode}</div>
+                  <div className="font-medium">{row.PlantCode}</div>
                   <div className="text-gray-500">→ {row.SiteCode}</div>
                 </td>
 
-                <td className="px-3 py-3 text-sm text-right text-gray-900">
+                <td className="px-3 py-3 text-sm text-right">
                   {fmt(row.rmc_distance_km_p2s)}
                 </td>
-                <td className="px-3 py-3 text-sm text-right text-gray-900">
+                <td className="px-3 py-3 text-sm text-right">
                   {fmt(row.rmc_distance_km_s2p)}
                 </td>
 
-                <td className="px-3 py-3 text-sm text-right text-blue-600 font-medium">
+                <td className="px-3 py-3 text-sm text-right text-blue-600">
                   {fmt(row.gps_distance_km_p2s)}
                 </td>
-                <td className="px-3 py-3 text-sm text-right text-blue-600 font-medium">
+                <td className="px-3 py-3 text-sm text-right text-blue-600">
                   {fmt(row.gps_distance_km_s2p)}
                 </td>
 
-                <td className="px-3 py-3 text-sm text-right text-green-600 font-medium">
+                <td className="px-3 py-3 text-sm text-right text-green-600">
                   {fmt(row.osrm_distance_km_p2s)}
                 </td>
-                <td className="px-3 py-3 text-sm text-right text-green-600 font-medium">
+                <td className="px-3 py-3 text-sm text-right text-green-600">
                   {fmt(row.osrm_distance_km_s2p)}
                 </td>
 
-
                 <td className={styles.tdCenter}>
-                  <Link 
-                    href={`/smartdistance/${row.TicketNo}`}
-                    className="text-xl hover:scale-110 inline-block transition-transform"
-                  >
+                  <Link href={`/smartdistance/${row.TicketNo}`} className="text-xl">
                     🗺️
                   </Link>
                 </td>
@@ -218,11 +210,11 @@ export function SmartDistanceTable({ data }: Props) {
         </table>
       </div>
 
-      {/* ===== Pagination Bar ===== */}
+      {/* ===== Pagination ===== */}
       <div className="flex items-center justify-between">
         {/* Page size */}
-        <div className="flex items-center gap-2 text-sm text-gray-700">
-          <span className="font-medium">Rows:</span>
+        <div className="flex items-center gap-2 text-sm">
+          Rows:
           <Select
             value={String(pageSize)}
             onValueChange={(v) => {
@@ -243,45 +235,41 @@ export function SmartDistanceTable({ data }: Props) {
           </Select>
         </div>
 
-        {/* Pager */}
         <Pagination>
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
                 onClick={() => setPage(p => Math.max(1, p - 1))}
-                className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
               />
             </PaginationItem>
 
-            {Array.from({ length: totalPages }).slice(0, 5).map((_, i) => {
-              const p = i + 1
-              return (
+            {getPages(page, totalPages).map((p, i) =>
+              p === "..." ? (
+                <PaginationItem key={i}>
+                  <span className="px-2 text-gray-400">…</span>
+                </PaginationItem>
+              ) : (
                 <PaginationItem key={p}>
                   <PaginationLink
                     isActive={p === page}
                     onClick={() => setPage(p)}
-                    className="cursor-pointer"
                   >
                     {p}
                   </PaginationLink>
                 </PaginationItem>
               )
-            })}
+            )}
 
             <PaginationItem>
               <PaginationNext
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
               />
             </PaginationItem>
           </PaginationContent>
         </Pagination>
 
-        {/* Total count */}
         <div className="text-sm text-gray-600">
-          Showing <span className="font-medium">{(page - 1) * pageSize + 1}</span> to{' '}
-          <span className="font-medium">{Math.min(page * pageSize, data.length)}</span> of{' '}
-          <span className="font-medium">{data.length}</span> results
+          {data.length} rows
         </div>
       </div>
     </div>
