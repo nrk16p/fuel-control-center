@@ -118,7 +118,7 @@ export function SmartDistanceFilters({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* 🏢 Company */}
           <FilterSelect<Company>
-            label="Company"
+            label="Client"
             value={company}
             onChange={setCompany}
             icon={<Building2 size={14} />}
