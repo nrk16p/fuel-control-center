@@ -9,6 +9,7 @@ import {
 import {
   SmartDistanceFilters,
   AllOrNumber,
+  Company,
 } from "@/components/smartdistance/SmartDistanceFilters"
 
 /* -------------------------------------------------
@@ -18,6 +19,25 @@ const now = new Date()
 const CURRENT_MONTH = now.getMonth() + 1
 const CURRENT_YEAR = now.getFullYear()
 
+/* -------------------------------------------------
+   Company matcher (FE-only)
+------------------------------------------------- */
+function matchCompany(
+  plantCode: string | undefined,
+  company: Company
+) {
+  if (company === "all") return true
+  if (!plantCode) return false
+
+  const v = plantCode.toUpperCase()
+  if (company === "Asia")
+    return v.startsWith("SU") || v.startsWith("SX")
+  if (company === "SCCO")
+    return v.startsWith("C")
+
+  return true
+}
+
 export default function SmartDistancePage() {
   /* ---------------- Data ---------------- */
   const [data, setData] = useState<SmartDistanceRow[]>([])
@@ -25,12 +45,14 @@ export default function SmartDistancePage() {
 
   /* ---------------- Filters ---------------- */
   const [search, setSearch] = useState("")
-
   const [plantCode, setPlantCode] = useState("")
   const [siteCode, setSiteCode] = useState("")
+  const [company, setCompany] = useState<Company>("all")
 
-  const [month, setMonth] = useState<AllOrNumber>(CURRENT_MONTH)
-  const [year, setYear] = useState<AllOrNumber>(CURRENT_YEAR)
+  const [month, setMonth] =
+    useState<AllOrNumber>(CURRENT_MONTH)
+  const [year, setYear] =
+    useState<AllOrNumber>(CURRENT_YEAR)
 
   /* -------------------------------------------------
      Fetch data (SYNC WITH DATE FILTER)
@@ -53,33 +75,52 @@ export default function SmartDistancePage() {
   }, [year, month])
 
   /* -------------------------------------------------
-     Client-side filter
-     (search + plant + site)
+     Client-side filter (FE-only)
   ------------------------------------------------- */
   const filtered = useMemo(() => {
     return data.filter((d) => {
-      /* 🔍 search */
+      /* 🔍 Search */
+      if (search) {
+        const q = search.toLowerCase()
+        const ok =
+          d.TicketNo?.toLowerCase().includes(q) ||
+          d.TruckPlateNo?.toLowerCase().includes(q)
+
+        if (!ok) return false
+      }
+
+      /* 🏢 Company */
+      if (!matchCompany(d.PlantCode, company)) {
+        return false
+      }
+
+      /* 🏭 Plant prefix */
       if (
-        search &&
-        !d.TicketNo.toLowerCase().includes(search.toLowerCase()) &&
-        !d.TruckPlateNo?.toLowerCase().includes(search.toLowerCase())
+        plantCode &&
+        !d.PlantCode
+          ?.toUpperCase()
+          .startsWith(plantCode.toUpperCase())
       ) {
         return false
       }
 
-      /* 🏭 plant */
-      if (plantCode && d.PlantCode !== plantCode) {
-        return false
-      }
-
-      /* 📍 site */
-      if (siteCode && d.SiteCode !== siteCode) {
+      /* 📍 Site prefix */
+      if (
+        siteCode &&
+        !d.SiteCode?.startsWith(siteCode)
+      ) {
         return false
       }
 
       return true
     })
-  }, [data, search, plantCode, siteCode])
+  }, [
+    data,
+    search,
+    plantCode,
+    siteCode,
+    company,
+  ])
 
   /* -------------------------------------------------
      Reset
@@ -88,6 +129,7 @@ export default function SmartDistancePage() {
     setSearch("")
     setPlantCode("")
     setSiteCode("")
+    setCompany("all")
     setMonth(CURRENT_MONTH)
     setYear(CURRENT_YEAR)
   }
@@ -132,6 +174,8 @@ export default function SmartDistancePage() {
         setPlantCode={setPlantCode}
         siteCode={siteCode}
         setSiteCode={setSiteCode}
+        company={company}
+        setCompany={setCompany}
         month={month}
         setMonth={setMonth}
         year={year}

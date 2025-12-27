@@ -48,6 +48,16 @@ export interface SmartDistanceRow {
 const fmt = (v?: number | null) =>
   v == null ? "—" : v.toFixed(2)
 
+type Company = "Asia" | "SCCO" | "—"
+
+function deriveCompany(plantCode?: string): Company {
+  if (!plantCode) return "—"
+  const v = plantCode.toUpperCase()
+  if (v.startsWith("SU") || v.startsWith("SX")) return "Asia"
+  if (v.startsWith("C")) return "SCCO"
+  return "—"
+}
+
 /* -------------------------------------------------
    Tooltip
 ------------------------------------------------- */
@@ -127,6 +137,7 @@ export function SmartDistanceTable({ data }: Props) {
               <th rowSpan={2} className={styles.th}>Ticket</th>
               <th rowSpan={2} className={styles.th}>Truck</th>
               <th rowSpan={2} className={styles.th}>Route</th>
+              <th rowSpan={2} className={styles.thCenter}>Company</th>
 
               <th colSpan={2} className={styles.thCenter}>
                 RMC <InfoTooltip text="ข้อมูลระยะทางจากตั๋ว" />
@@ -152,60 +163,84 @@ export function SmartDistanceTable({ data }: Props) {
           </thead>
 
           <tbody className="divide-y">
-            {pageData.map(row => (
-              <tr key={row.TicketNo} className="hover:bg-gray-50">
-                <td className={styles.td}>
-                  <Link
-                    href={`/smartdistance/${row.TicketNo}`}
-                    className="text-blue-600 font-medium"
-                  >
-                    {row.TicketNo}
-                  </Link>
-                  {row.TicketCreateAt && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {new Date(row.TicketCreateAt).toLocaleString("en-GB")}
-                    </div>
-                  )}
-                </td>
+            {pageData.map(row => {
+              const company = deriveCompany(row.PlantCode)
 
-                <td className={styles.td}>
-                  <div className="font-medium">{row.TruckPlateNo}</div>
-                  <div className="text-xs text-gray-500">{row.TruckNo}</div>
-                </td>
+              return (
+                <tr
+                  key={row.TicketNo}
+                  className={`hover:bg-gray-50 ${
+                    row.is_split_trip ? "bg-red-50" : ""
+                  }`}
+                >
+                  <td className={styles.td}>
+                    <Link
+                      href={`/smartdistance/${row.TicketNo}`}
+                      className="text-blue-600 font-medium"
+                    >
+                      {row.TicketNo}
+                    </Link>
+                    {row.TicketCreateAt && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {row.TicketCreateAt}
+                      </div>
+                    )}
+                  </td>
 
-                <td className={`${styles.td} text-xs`}>
-                  <div className="font-medium">{row.PlantCode}</div>
-                  <div className="text-gray-500">→ {row.SiteCode}</div>
-                </td>
+                  <td className={styles.td}>
+                    <div className="font-medium">{row.TruckPlateNo}</div>
+                    <div className="text-xs text-gray-500">{row.TruckNo}</div>
+                  </td>
 
-                <td className="px-3 py-3 text-sm text-right">
-                  {fmt(row.rmc_distance_km_p2s)}
-                </td>
-                <td className="px-3 py-3 text-sm text-right">
-                  {fmt(row.rmc_distance_km_s2p)}
-                </td>
+                  <td className={`${styles.td} text-xs`}>
+                    <div className="font-medium">{row.PlantCode}</div>
+                    <div className="text-gray-500">→ {row.SiteCode}</div>
+                  </td>
 
-                <td className="px-3 py-3 text-sm text-right text-blue-600">
-                  {fmt(row.gps_distance_km_p2s)}
-                </td>
-                <td className="px-3 py-3 text-sm text-right text-blue-600">
-                  {fmt(row.gps_distance_km_s2p)}
-                </td>
+                  {/* Company */}
+                  <td className={styles.tdCenter}>
+                    {company !== "—" && (
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium ${
+                          company === "Asia"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}
+                      >
+                        {company}
+                      </span>
+                    )}
+                  </td>
 
-                <td className="px-3 py-3 text-sm text-right text-green-600">
-                  {fmt(row.osrm_distance_km_p2s)}
-                </td>
-                <td className="px-3 py-3 text-sm text-right text-green-600">
-                  {fmt(row.osrm_distance_km_s2p)}
-                </td>
+                  <td className="px-3 py-3 text-sm text-right">
+                    {fmt(row.rmc_distance_km_p2s)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-right">
+                    {fmt(row.rmc_distance_km_s2p)}
+                  </td>
 
-                <td className={styles.tdCenter}>
-                  <Link href={`/smartdistance/${row.TicketNo}`} className="text-xl">
-                    🗺️
-                  </Link>
-                </td>
-              </tr>
-            ))}
+                  <td className="px-3 py-3 text-sm text-right text-blue-600">
+                    {fmt(row.gps_distance_km_p2s)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-right text-blue-600">
+                    {fmt(row.gps_distance_km_s2p)}
+                  </td>
+
+                  <td className="px-3 py-3 text-sm text-right text-green-600">
+                    {fmt(row.osrm_distance_km_p2s)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-right text-green-600">
+                    {fmt(row.osrm_distance_km_s2p)}
+                  </td>
+
+                  <td className={styles.tdCenter}>
+                    <Link href={`/smartdistance/${row.TicketNo}`} className="text-xl">
+                      🗺️
+                    </Link>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
