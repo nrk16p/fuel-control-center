@@ -244,7 +244,7 @@ export function FuelChart({
       </div>
 
       <div className="h-[480px]">
-        <Chart ref={chartRef} type="bar" data={chartData} options={chartOptions} />
+        <Chart ref={chartRef} type="bar" data={chartData} options={chartOptions} updateMode="none"   redraw={false}/>
       </div>
 
       <div className="mt-3 space-y-1">
