@@ -6,6 +6,7 @@ import timezone from "dayjs/plugin/timezone"
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
+const FIX_OFFSET_MS = 7 * 60 * 60 * 1000
 
 interface Props {
   plate: string
@@ -36,8 +37,8 @@ export function SuspiciousCaseCard({
       </div>
 
       <div className="text-sm text-gray-700">
-        ⏱ {dayjs(startTs).format("DD MMM YYYY HH:mm")} →{" "}
-        {dayjs(endTs).format("HH:mm")}
+        ⏱ {dayjs(startTs-FIX_OFFSET_MS).tz("Asia/Bangkok").format("DD MMM YYYY HH:mm")} →{" "}
+        {dayjs(endTs-FIX_OFFSET_MS).tz("Asia/Bangkok").format("HH:mm")}
       </div>
 
       <div className="text-sm">
