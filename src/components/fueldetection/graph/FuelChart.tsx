@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useCallback } from "react"
+import { useMemo, useRef } from "react"
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -16,6 +16,7 @@ import {
   type ChartData,
   type ChartOptions,
   type TooltipItem,
+  type ChartEvent, // ✅ สำคัญ: แก้ TS error
 } from "chart.js"
 import zoomPlugin from "chartjs-plugin-zoom"
 import { Chart } from "react-chartjs-2"
@@ -62,7 +63,7 @@ export function FuelChart({
   suspiciousWindows,
   onSelectIndex,
 }: Props) {
-  // เก็บ instance เดิม → ป้องกันการ remount ที่ทำให้ zoom reset
+  // เก็บ instance เดิม → ป้องกันการ remount ที่ทำให้ zoom ดูเหมือน reset
   const chartRef = useRef<ChartJS<"bar" | "line", number[], string> | null>(null)
 
   const chartData: ChartData<"bar" | "line", number[], string> = useMemo(
@@ -102,7 +103,7 @@ export function FuelChart({
       responsive: true,
       maintainAspectRatio: false,
 
-      // 🔒 กัน re-render animation ที่อาจกระทบ scale
+      // 🔒 ปิด animation กัน re-render แล้ว scale กระดิก
       animation: { duration: 0 },
 
       interaction: {
@@ -110,8 +111,8 @@ export function FuelChart({
         intersect: false,
       },
 
-      // 🔒 HARD BLOCK: Click = Select เท่านั้น, ห้าม plugin แตะ scale
-      onClick: (event, elements) => {
+      // 🔒 HARD BLOCK: Click = Select เท่านั้น
+      onClick: (event: ChartEvent, elements) => {
         event.native?.preventDefault()
         event.native?.stopPropagation()
 
@@ -123,8 +124,8 @@ export function FuelChart({
         }
       },
 
-      // 🔒 กัน double-click / gesture ใด ๆ
-      onDoubleClick: (event) => {
+      // 🔒 กัน double-click / gesture
+      onDoubleClick: (event: ChartEvent) => {
         event.native?.preventDefault()
         event.native?.stopPropagation()
       },
@@ -166,23 +167,23 @@ export function FuelChart({
           },
         },
 
-        // 🔒 HARD CONFIG: Zoom เฉพาะ scroll / pinch เท่านั้น
+        // 🔒 HARD CONFIG: Zoom เฉพาะ scroll / pinch
         zoom: {
           zoom: {
             wheel: {
-              enabled: true,     // ซูมเฉพาะ scroll
+              enabled: true,
               speed: 0.1,
             },
             pinch: {
-              enabled: true,     // มือถือ pinch ได้
+              enabled: true,
             },
             drag: {
-              enabled: false,    // ❌ ปิด drag-zoom (ต้นเหตุที่ชนกับ click)
+              enabled: false, // ❌ ปิด drag-zoom (ตัวที่ชนกับ click)
             },
             mode: "x" as const,
           },
           pan: {
-            enabled: true,       // ลาก = pan อย่างเดียว
+            enabled: true, // ลาก = pan เท่านั้น
             mode: "x" as const,
           },
           limits: {
@@ -244,7 +245,7 @@ export function FuelChart({
 
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm">
-      {/* Header (ไม่มีปุ่ม reset แล้ว) */}
+      {/* Header */}
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold text-gray-900">
           กราฟระดับน้ำมันและความเร็ว
@@ -283,7 +284,7 @@ export function FuelChart({
           💡 <strong>Zoom:</strong> เลื่อนล้อเมาส์ | <strong>Pan:</strong> ลากเมาส์ | <strong>Select:</strong> คลิกจุดบนกราฟ
         </div>
         <div className="text-xs text-blue-600 text-center font-medium">
-          🔒 คลิกจะไม่กระทบ Zoom อีกต่อไป (ไม่มีปุ่มรีเซ็ต)
+          🔒 คลิกจะไม่กระทบ Zoom (ไม่มี reset / ไม่มี drag-zoom)
         </div>
       </div>
     </div>
