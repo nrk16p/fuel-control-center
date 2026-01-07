@@ -16,7 +16,8 @@ import {
   type ChartData,
   type ChartOptions,
   type TooltipItem,
-  type ChartEvent, // ✅ สำคัญ: แก้ TS error
+  type ChartEvent,
+  type Scale,
 } from "chart.js"
 import zoomPlugin from "chartjs-plugin-zoom"
 import { Chart } from "react-chartjs-2"
@@ -63,8 +64,13 @@ export function FuelChart({
   suspiciousWindows,
   onSelectIndex,
 }: Props) {
-  // เก็บ instance เดิม → ป้องกันการ remount ที่ทำให้ zoom ดูเหมือน reset
   const chartRef = useRef<ChartJS<"bar" | "line", number[], string> | null>(null)
+
+  // 🔒 เก็บสถานะ zoom ปัจจุบัน
+  const zoomStateRef = useRef<{ min: number | null; max: number | null }>({
+    min: null,
+    max: null,
+  })
 
   const chartData: ChartData<"bar" | "line", number[], string> = useMemo(
     () => ({
@@ -102,8 +108,6 @@ export function FuelChart({
     () => ({
       responsive: true,
       maintainAspectRatio: false,
-
-      // 🔒 ปิด animation กัน re-render แล้ว scale กระดิก
       animation: { duration: 0 },
 
       interaction: {
@@ -111,10 +115,19 @@ export function FuelChart({
         intersect: false,
       },
 
-      // 🔒 HARD BLOCK: Click = Select เท่านั้น
+      // 🔒 Click = Select only + SAVE current zoom
       onClick: (event: ChartEvent, elements) => {
         event.native?.preventDefault()
         event.native?.stopPropagation()
+
+        const chart = chartRef.current
+        if (chart) {
+          const xScale = chart.scales["x"] as Scale
+          zoomStateRef.current = {
+            min: typeof xScale.min === "number" ? xScale.min : null,
+            max: typeof xScale.max === "number" ? xScale.max : null,
+          }
+        }
 
         if (elements.length > 0) {
           const index = elements[0].index
@@ -122,9 +135,19 @@ export function FuelChart({
             onSelectIndex(index)
           }
         }
+
+        // 🔁 RESTORE zoom immediately after React update
+        requestAnimationFrame(() => {
+          const chart2 = chartRef.current
+          if (chart2 && zoomStateRef.current.min != null && zoomStateRef.current.max != null) {
+            chart2.zoomScale("x", {
+              min: zoomStateRef.current.min,
+              max: zoomStateRef.current.max,
+            })
+          }
+        })
       },
 
-      // 🔒 กัน double-click / gesture
       onDoubleClick: (event: ChartEvent) => {
         event.native?.preventDefault()
         event.native?.stopPropagation()
@@ -134,11 +157,7 @@ export function FuelChart({
         legend: {
           display: true,
           position: "top" as const,
-          labels: {
-            usePointStyle: true,
-            padding: 15,
-            font: { size: 12 },
-          },
+          labels: { usePointStyle: true, padding: 15, font: { size: 12 } },
         },
 
         tooltip: {
@@ -156,41 +175,27 @@ export function FuelChart({
               const label = context.dataset.label || ""
               const value = context.parsed.y
               if (value == null || isNaN(value)) return `${label}: N/A`
-
-              if (label.includes("น้ำมัน")) {
-                return `⛽ ${label}: ${value.toFixed(2)} ลิตร`
-              } else if (label.includes("ความเร็ว")) {
-                return `🚗 ${label}: ${value.toFixed(0)} กม./ชม.`
-              }
+              if (label.includes("น้ำมัน")) return `⛽ ${label}: ${value.toFixed(2)} ลิตร`
+              if (label.includes("ความเร็ว")) return `🚗 ${label}: ${value.toFixed(0)} กม./ชม.`
               return `${label}: ${value}`
             },
           },
         },
 
-        // 🔒 HARD CONFIG: Zoom เฉพาะ scroll / pinch
+        // 🔒 Zoom เฉพาะ scroll/pinch
         zoom: {
           zoom: {
-            wheel: {
-              enabled: true,
-              speed: 0.1,
-            },
-            pinch: {
-              enabled: true,
-            },
-            drag: {
-              enabled: false, // ❌ ปิด drag-zoom (ตัวที่ชนกับ click)
-            },
+            wheel: { enabled: true, speed: 0.1 },
+            pinch: { enabled: true },
+            drag: { enabled: false },
             mode: "x" as const,
           },
           pan: {
-            enabled: true, // ลาก = pan เท่านั้น
+            enabled: true,
             mode: "x" as const,
           },
           limits: {
-            x: {
-              min: "original" as const,
-              max: "original" as const,
-            },
+            x: { min: "original" as const, max: "original" as const },
           },
         },
 
@@ -205,12 +210,7 @@ export function FuelChart({
         x: {
           display: true,
           grid: { display: false },
-          ticks: {
-            maxRotation: 45,
-            minRotation: 0,
-            autoSkip: true,
-            maxTicksLimit: 20,
-          },
+          ticks: { maxRotation: 45, minRotation: 0, autoSkip: true, maxTicksLimit: 20 },
         },
         y: {
           type: "linear" as const,
@@ -218,11 +218,7 @@ export function FuelChart({
           position: "left" as const,
           min: 0,
           suggestedMax: 250,
-          title: {
-            display: true,
-            text: "ระดับน้ำมัน (ลิตร)",
-            font: { size: 12, weight: "bold" as const },
-          },
+          title: { display: true, text: "ระดับน้ำมัน (ลิตร)", font: { size: 12, weight: "bold" as const } },
           grid: { color: "rgba(0, 0, 0, 0.05)" },
         },
         y1: {
@@ -231,11 +227,7 @@ export function FuelChart({
           position: "right" as const,
           min: 0,
           suggestedMax: 100,
-          title: {
-            display: true,
-            text: "ความเร็ว (กม./ชม.)",
-            font: { size: 12, weight: "bold" as const },
-          },
+          title: { display: true, text: "ความเร็ว (กม./ชม.)", font: { size: 12, weight: "bold" as const } },
           grid: { drawOnChartArea: false },
         },
       },
@@ -245,46 +237,22 @@ export function FuelChart({
 
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm">
-      {/* Header */}
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold text-gray-900">
           กราฟระดับน้ำมันและความเร็ว
         </h2>
-
-        {/* Legend */}
-        <div className="flex items-center gap-3 text-xs text-gray-600">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 bg-gray-200 rounded"></div>
-            <span>ยังไม่ได้ตรวจ</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 bg-blue-100 rounded"></div>
-            <span>ตรวจแล้ว</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 bg-red-100 rounded"></div>
-            <span>ผิดปกติ</span>
-          </div>
-        </div>
       </div>
 
-      {/* Chart */}
       <div className="h-[480px]">
-        <Chart
-          ref={chartRef}
-          type="bar"
-          data={chartData}
-          options={chartOptions}
-        />
+        <Chart ref={chartRef} type="bar" data={chartData} options={chartOptions} />
       </div>
 
-      {/* Instructions */}
       <div className="mt-3 space-y-1">
         <div className="text-xs text-gray-500 text-center">
           💡 <strong>Zoom:</strong> เลื่อนล้อเมาส์ | <strong>Pan:</strong> ลากเมาส์ | <strong>Select:</strong> คลิกจุดบนกราฟ
         </div>
         <div className="text-xs text-blue-600 text-center font-medium">
-          🔒 คลิกจะไม่กระทบ Zoom (ไม่มี reset / ไม่มี drag-zoom)
+          🔒 Zoom จะไม่ reset แม้ React re-render
         </div>
       </div>
     </div>
