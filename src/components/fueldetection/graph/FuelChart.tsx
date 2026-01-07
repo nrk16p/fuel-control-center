@@ -11,13 +11,6 @@ import zoomPlugin from "chartjs-plugin-zoom"
 import { Chart } from "react-chartjs-2"
 import "./reviewedBandsPlugin"
 
-import dayjs from "dayjs"
-import utc from "dayjs/plugin/utc"
-import timezone from "dayjs/plugin/timezone"
-
-dayjs.extend(utc)
-dayjs.extend(timezone)
-
 /* ---------------------------------------
    Register Chart.js
 --------------------------------------- */
@@ -91,13 +84,12 @@ export function FuelChart({
           /* ---------------------------------------
              🕒 FIX TIMEZONE: ใช้ label จาก DB โดยตรง
           --------------------------------------- */
-          title: (items) => {
-            // ใช้ labels ที่คุณส่งเข้ามา (ไม่โดน timezone)
+          title: (items: TooltipItem<"bar" | "line">[]) => {
             const idx = items[0]?.dataIndex
             if (idx == null) return ""
 
-            const label = labels[idx] // "23/12/2025 21:34"
-            return label
+            // ใช้ labels ที่ส่งเข้ามาโดยตรง → ไม่โดน timezone
+            return labels[idx]
           },
 
           /* แสดงค่า Y ตามเดิม */
