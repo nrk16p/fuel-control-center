@@ -13,7 +13,7 @@ export type ReviewRow = {
   plate: string
   start_ts: number
   end_ts: number
-  decision: Decision
+  decision: string  // ✅ Allow any string from DB
   note?: string
   reviewer?: string
   fuel_diff?: number
@@ -152,7 +152,8 @@ export default function FuelDetectionGraph({ data, reviews, onReviewSaved }: Pro
       if (startIdx != null && endIdx != null) {
         setSelStart(startIdx)
         setSelEnd(endIdx)
-        setDecision(review.decision)
+        // Cast to Decision type (DB value should match one of the allowed values)
+        setDecision(review.decision as Decision)
         setNote(review.note ?? "")
         setError(null)
       }
@@ -232,7 +233,7 @@ export default function FuelDetectionGraph({ data, reviews, onReviewSaved }: Pro
         
         decision,
         note: note.trim(),
-        reviewer: "ทีมเชื้อเพลิง",
+        reviewer: "ีทีมเชื้อเพลิง",
         
         // Revision: camelCase (API reads body.revisionOf)
         revisionOf: null,
