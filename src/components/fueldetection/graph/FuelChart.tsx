@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useRef, useCallback } from "react"
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -50,8 +50,8 @@ interface Props {
 }
 
 const CHART_COLORS = {
-  FUEL_LINE: "rgb(59, 130, 246)", // Blue
-  SPEED_BAR: "rgba(156, 163, 175, 0.5)", // Gray
+  FUEL_LINE: "rgb(59, 130, 246)",
+  SPEED_BAR: "rgba(156, 163, 175, 0.5)",
 } as const
 
 export function FuelChart({
@@ -62,6 +62,9 @@ export function FuelChart({
   suspiciousWindows,
   onSelectIndex,
 }: Props) {
+  // ✅ Store chart reference to preserve zoom state
+  const chartRef = useRef<ChartJS<"bar" | "line", number[], string> | null>(null)
+
   const chartData: ChartData<"bar" | "line", number[], string> = useMemo(
     () => ({
       labels,
@@ -94,18 +97,32 @@ export function FuelChart({
     [labels, fuelData, speedData]
   )
 
+  // ✅ Reset zoom handler
+  const handleResetZoom = useCallback(() => {
+    if (chartRef.current) {
+      chartRef.current.resetZoom()
+    }
+  }, [])
+
   const chartOptions: ChartOptions<"bar" | "line"> = useMemo(
     () => ({
       responsive: true,
       maintainAspectRatio: false,
+      // ✅ Disable animation to preserve zoom on updates
+      animation: {
+        duration: 0,
+      },
       interaction: {
         mode: "index" as const,
         intersect: false,
       },
+      // ✅ Click handler - zoom stays preserved
       onClick: (_event, elements) => {
         if (elements.length > 0) {
           const index = elements[0].index
-          onSelectIndex(index)
+          if (index != null) {
+            onSelectIndex(index)
+          }
         }
       },
       plugins: {
@@ -126,7 +143,7 @@ export function FuelChart({
           padding: 12,
           titleFont: {
             size: 13,
-            weight: "bold",
+            weight: "bold" as const,
           },
           bodyFont: {
             size: 12,
@@ -207,7 +224,7 @@ export function FuelChart({
             text: "ระดับน้ำมัน (ลิตร)",
             font: {
               size: 12,
-              weight: "bold",
+              weight: "bold" as const,
             },
           },
           grid: {
@@ -225,7 +242,7 @@ export function FuelChart({
             text: "ความเร็ว (กม./ชม.)",
             font: {
               size: 12,
-              weight: "bold",
+              weight: "bold" as const,
             },
           },
           grid: {
@@ -239,32 +256,72 @@ export function FuelChart({
 
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
+      {/* Header with Reset Zoom Button */}
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold text-gray-900">
           กราฟระดับน้ำมันและความเร็ว
         </h2>
-        <div className="flex items-center gap-4 text-xs text-gray-600">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gray-200 rounded"></div>
-            <span>ยังไม่ได้ตรวจ</span>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Legend */}
+          <div className="flex items-center gap-3 text-xs text-gray-600">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-gray-200 rounded"></div>
+              <span>ยังไม่ได้ตรวจ</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-blue-100 rounded"></div>
+              <span>ตรวจแล้ว</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-red-100 rounded"></div>
+              <span>ผิดปกติ</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-100 rounded"></div>
-            <span>ตรวจแล้ว</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-100 rounded"></div>
-            <span>ผิดปกติ</span>
-          </div>
+
+          {/* Reset Zoom Button */}
+          <button
+            onClick={handleResetZoom}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200 hover:border-blue-300"
+            title="รีเซ็ต Zoom กลับมุมมองเริ่มต้น"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"
+              />
+            </svg>
+            <span className="hidden sm:inline">รีเซ็ต Zoom</span>
+            <span className="sm:hidden">รีเซ็ต</span>
+          </button>
         </div>
       </div>
 
+      {/* Chart */}
       <div className="h-[480px]">
-        <Chart type="bar" data={chartData} options={chartOptions} />
+        <Chart
+          ref={chartRef}
+          type="bar"
+          data={chartData}
+          options={chartOptions}
+        />
       </div>
 
-      <div className="mt-3 text-xs text-gray-500 text-center">
-        💡 เลื่อนเมาส์เพื่อซูม, คลิกจุดบนกราฟเพื่อเลือกช่วงเวลา
+      {/* Instructions */}
+      <div className="mt-3 space-y-1">
+        <div className="text-xs text-gray-500 text-center">
+          💡 <strong>Zoom:</strong> เลื่อนล้อเมาส์ | <strong>Pan:</strong> ลากเมาส์ | <strong>Select:</strong> คลิกจุดบนกราฟ
+        </div>
+        <div className="text-xs text-blue-600 text-center font-medium">
+          🔍 Zoom จะไม่รีเซ็ตเมื่อคลิกเลือกช่วงเวลา - กดปุ่ม "รีเซ็ต Zoom" เพื่อกลับมุมมองเริ่มต้น
+        </div>
       </div>
     </div>
   )
