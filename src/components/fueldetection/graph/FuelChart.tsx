@@ -181,15 +181,15 @@ export function FuelChart({
             pinch: {
               enabled: true,
             },
+            drag: {
+              enabled: false,   // 🔒 ปิด drag-zoom (กัน click / double-click ชน zoom)
+            },
             mode: "x" as const,
           },
           pan: {
-            enabled: true,
+            enabled: true,      // ลาก = pan เท่านั้น
             mode: "x" as const,
           },
-                drag: {
-        enabled: false,  // ❌ ปิด drag-zoom (ตัวที่มักชนกับ click)
-      },
           limits: {
             x: {
               min: "original" as const,
