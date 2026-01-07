@@ -136,6 +136,11 @@ export function FuelChart({
               const label = context.dataset.label || ""
               const value = context.parsed.y
 
+              // Handle null/undefined values
+              if (value == null || isNaN(value)) {
+                return `${label}: N/A`
+              }
+
               if (label.includes("น้ำมัน")) {
                 return `⛽ ${label}: ${value.toFixed(2)} ลิตร`
               } else if (label.includes("ความเร็ว")) {
