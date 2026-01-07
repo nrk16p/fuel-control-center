@@ -2,6 +2,9 @@ import { NextResponse } from "next/server"
 import clientPromise from "@/lib/mongodb"
 import { toDateFromThai, overlap } from "@/lib/dt-th"
 
+/* -------------------------------------------------
+   Sample every 5 minutes
+------------------------------------------------- */
 function sampleDataEvery5Minutes(data: any[]) {
   if (data.length === 0) return data
 
@@ -35,9 +38,50 @@ function sampleDataEvery5Minutes(data: any[]) {
   return sampled
 }
 
+/* -------------------------------------------------
+   Convert row to timestamp (for review overlap)
+------------------------------------------------- */
 function toTs(row: any) {
   const dt = toDateFromThai(row["วันที่"], row["เวลา"])
   return dt ? dt.getTime() : null
+}
+
+/* -------------------------------------------------
+   Build list of "DD/MM/YYYY" strings between start-end (inclusive)
+   ✅ Fix for string-date comparison issue in Mongo
+------------------------------------------------- */
+function pad2(n: number) {
+  return String(n).padStart(2, "0")
+}
+
+function fmtThaiDateDDMMYYYY(d: Date) {
+  const dd = pad2(d.getDate())
+  const mm = pad2(d.getMonth() + 1)
+  const yyyy = d.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
+}
+
+function buildDateListDDMMYYYY(startDate: string, endDate: string) {
+  const s = toDateFromThai(startDate, "00:00:00")
+  const e = toDateFromThai(endDate, "00:00:00")
+  if (!s || !e) return []
+
+  // ensure s <= e
+  const start = s.getTime() <= e.getTime() ? s : e
+  const end = s.getTime() <= e.getTime() ? e : s
+
+  const out: string[] = []
+  const cur = new Date(start)
+  cur.setHours(0, 0, 0, 0)
+  const endDay = new Date(end)
+  endDay.setHours(0, 0, 0, 0)
+
+  while (cur.getTime() <= endDay.getTime()) {
+    out.push(fmtThaiDateDDMMYYYY(cur))
+    cur.setDate(cur.getDate() + 1)
+  }
+
+  return out
 }
 
 export async function GET(request: Request) {
@@ -45,8 +89,8 @@ export async function GET(request: Request) {
     const params = new URL(request.url).searchParams
 
     const plateDriver = params.get("plateDriver")?.trim() || ""
-    const startDate = params.get("startDate") || ""
-    const endDate = params.get("endDate") || ""
+    const startDate = params.get("startDate") || "" // DD/MM/YYYY
+    const endDate = params.get("endDate") || ""     // DD/MM/YYYY
 
     const statusesParam = params.get("statuses")
     const statuses = statusesParam
@@ -62,9 +106,26 @@ export async function GET(request: Request) {
     const db = client.db("terminus")
 
     const query: any = {}
-    if (startDate && endDate) query["วันที่"] = { $gte: startDate, $lte: endDate }
-    else if (startDate) query["วันที่"] = { $gte: startDate }
-    else if (endDate) query["วันที่"] = { $lte: endDate }
+
+    /* -------------------------------------------------
+       ✅ FIX: Do NOT use $gte/$lte on "DD/MM/YYYY" string
+       Use $in list of exact dates instead (prevents year 2026 leaking)
+    ------------------------------------------------- */
+    if (startDate && endDate) {
+      const dateList = buildDateListDDMMYYYY(startDate, endDate)
+      if (dateList.length > 0) {
+        query["วันที่"] = { $in: dateList }
+      } else {
+        // fallback: if parse failed, keep behavior but avoid wrong range match
+        // (no date filter)
+      }
+    } else if (startDate) {
+      // best-effort: exact day
+      query["วันที่"] = startDate
+    } else if (endDate) {
+      // best-effort: exact day
+      query["วันที่"] = endDate
+    }
 
     if (plateDriver) query["ทะเบียนพาหนะ"] = plateDriver
     if (statuses.length > 0) query["สถานะ"] = { $in: statuses }
