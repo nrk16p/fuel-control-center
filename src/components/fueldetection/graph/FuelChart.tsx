@@ -252,7 +252,7 @@ export function FuelChart({
           💡 <strong>Zoom:</strong> เลื่อนล้อเมาส์ | <strong>Pan:</strong> ลากเมาส์ | <strong>Select:</strong> คลิกจุดบนกราฟ
         </div>
         <div className="text-xs text-blue-600 text-center font-medium">
-          🔒 Zoom
+          🔒 Zoom จะไม่ reset แม้ React re-render
         </div>
       </div>
     </div>
