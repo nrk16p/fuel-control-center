@@ -1,42 +1,55 @@
 "use client"
 
+import { useMemo } from "react"
 import {
   Chart as ChartJS,
-  registerables,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
   type ChartData,
   type ChartOptions,
   type TooltipItem,
 } from "chart.js"
 import zoomPlugin from "chartjs-plugin-zoom"
 import { Chart } from "react-chartjs-2"
-import "./reviewedBandsPlugin"
+import { reviewedBandsPlugin, type Window, type ReviewedBandsOptions } from "./reviewedBandsPlugin"
 
-/* ---------------------------------------
-   Register Chart.js
---------------------------------------- */
-ChartJS.register(...registerables, zoomPlugin)
-
-/* ---------------------------------------
-   Types
---------------------------------------- */
-type Window = { fromIdx: number; toIdx: number }
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  zoomPlugin,
+  reviewedBandsPlugin
+)
 
 interface Props {
-  labels: string[]                // e.g. "23/12/2025 21:34"
+  labels: string[]
   fuelData: number[]
   speedData: number[]
   bandWindows: {
     reviewed: Window[]
     unreviewed: Window[]
   }
-  /** 🔴 highlight สำหรับ reviewed_suspicious */
   suspiciousWindows: Window[]
   onSelectIndex: (idx: number) => void
 }
 
-/* ---------------------------------------
-   Component
---------------------------------------- */
+const CHART_COLORS = {
+  FUEL_LINE: "rgb(59, 130, 246)", // Blue
+  SPEED_BAR: "rgba(156, 163, 175, 0.5)", // Gray
+} as const
+
 export function FuelChart({
   labels,
   fuelData,
@@ -45,105 +58,205 @@ export function FuelChart({
   suspiciousWindows,
   onSelectIndex,
 }: Props) {
-  const data: ChartData<"bar" | "line", number[], string> = {
-    labels,
-    datasets: [
-      {
-        type: "line",
-        label: "ระดับน้ำมัน (ลิตร)",
-        data: fuelData,
-        yAxisID: "y",
-        borderWidth: 2,
-        tension: 0.25,
-        pointRadius: 0,
-        order: 1,
+  const chartData: ChartData<"bar" | "line", number[], string> = useMemo(
+    () => ({
+      labels,
+      datasets: [
+        {
+          type: "line" as const,
+          label: "ระดับน้ำมัน (ลิตร)",
+          data: fuelData,
+          yAxisID: "y",
+          borderColor: CHART_COLORS.FUEL_LINE,
+          backgroundColor: CHART_COLORS.FUEL_LINE,
+          borderWidth: 2,
+          tension: 0.25,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: CHART_COLORS.FUEL_LINE,
+          order: 1,
+        },
+        {
+          type: "bar" as const,
+          label: "ความเร็ว (กม./ชม.)",
+          data: speedData,
+          yAxisID: "y1",
+          backgroundColor: CHART_COLORS.SPEED_BAR,
+          borderColor: "transparent",
+          order: 2,
+        },
+      ],
+    }),
+    [labels, fuelData, speedData]
+  )
+
+  const chartOptions: ChartOptions<"bar" | "line"> = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: "index" as const,
+        intersect: false,
       },
-      {
-        type: "bar",
-        label: "ความเร็ว (กม./ชม.)",
-        data: speedData,
-        yAxisID: "y1",
-        order: 2,
+      onClick: (_event, elements) => {
+        if (elements.length > 0) {
+          const index = elements[0].index
+          onSelectIndex(index)
+        }
       },
-    ],
-  }
-
-  const options: ChartOptions<"bar" | "line"> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: "index", intersect: false },
-
-    onClick: (_evt, elements) => {
-      const idx = elements?.[0]?.index
-      if (idx != null) onSelectIndex(idx)
-    },
-
-    plugins: {
-      tooltip: {
-        callbacks: {
-          /* ---------------------------------------
-             🕒 FIX TIMEZONE: ใช้ label จาก DB โดยตรง
-          --------------------------------------- */
-          title: (items: TooltipItem<"bar" | "line">[]) => {
-            const idx = items[0]?.dataIndex
-            if (idx == null) return ""
-
-            // ใช้ labels ที่ส่งเข้ามาโดยตรง → ไม่โดน timezone
-            return labels[idx]
+      plugins: {
+        legend: {
+          display: true,
+          position: "top" as const,
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            font: {
+              size: 12,
+            },
           },
-
-          /* แสดงค่า Y ตามเดิม */
-          label: (ctx: TooltipItem<"bar" | "line">) =>
-            ctx.dataset.label?.includes("น้ำมัน")
-              ? `⛽ ${ctx.parsed.y} ลิตร`
-              : `🚗 ${ctx.parsed.y} กม./ชม.`,
         },
-      },
+        tooltip: {
+          enabled: true,
+          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          padding: 12,
+          titleFont: {
+            size: 13,
+            weight: "bold",
+          },
+          bodyFont: {
+            size: 12,
+          },
+          callbacks: {
+            title: (items: TooltipItem<"bar" | "line">[]) => {
+              const index = items[0]?.dataIndex
+              return index != null ? labels[index] : ""
+            },
+            label: (context: TooltipItem<"bar" | "line">) => {
+              const label = context.dataset.label || ""
+              const value = context.parsed.y
 
-      zoom: {
+              if (label.includes("น้ำมัน")) {
+                return `⛽ ${label}: ${value.toFixed(2)} ลิตร`
+              } else if (label.includes("ความเร็ว")) {
+                return `🚗 ${label}: ${value.toFixed(0)} กม./ชม.`
+              }
+
+              return `${label}: ${value}`
+            },
+          },
+        },
         zoom: {
-          wheel: { enabled: true },
-          pinch: { enabled: true },
-          mode: "x",
+          zoom: {
+            wheel: {
+              enabled: true,
+              speed: 0.1,
+            },
+            pinch: {
+              enabled: true,
+            },
+            mode: "x" as const,
+          },
+          pan: {
+            enabled: true,
+            mode: "x" as const,
+          },
+          limits: {
+            x: {
+              min: "original" as const,
+              max: "original" as const,
+            },
+          },
         },
-        pan: { enabled: true, mode: "x" },
+        reviewedBands: {
+          unreviewed: bandWindows.unreviewed,
+          reviewed: bandWindows.reviewed,
+          suspicious: suspiciousWindows,
+        } as ReviewedBandsOptions,
       },
-
-      /* ---------------------------------------
-         🔴 reviewed / unreviewed / suspicious
-      --------------------------------------- */
-      reviewedBands: {
-        unreviewed: bandWindows.unreviewed,
-        reviewed: bandWindows.reviewed,
-        suspicious: suspiciousWindows, // 🔴 layer บนสุด
-      } as any,
-    } as any,
-
-    scales: {
-      y: {
-        min: 0,
-        suggestedMax: 250,
-        title: {
+      scales: {
+        x: {
           display: true,
-          text: "ระดับน้ำมัน (ลิตร)",
+          grid: {
+            display: false,
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 20,
+          },
         },
-      },
-      y1: {
-        position: "right",
-        min: 0,
-        suggestedMax: 100,
-        grid: { drawOnChartArea: false },
-        title: {
+        y: {
+          type: "linear" as const,
           display: true,
-          text: "ความเร็ว (กม./ชม.)",
+          position: "left" as const,
+          min: 0,
+          suggestedMax: 250,
+          title: {
+            display: true,
+            text: "ระดับน้ำมัน (ลิตร)",
+            font: {
+              size: 12,
+              weight: "bold",
+            },
+          },
+          grid: {
+            color: "rgba(0, 0, 0, 0.05)",
+          },
+        },
+        y1: {
+          type: "linear" as const,
+          display: true,
+          position: "right" as const,
+          min: 0,
+          suggestedMax: 100,
+          title: {
+            display: true,
+            text: "ความเร็ว (กม./ชม.)",
+            font: {
+              size: 12,
+              weight: "bold",
+            },
+          },
+          grid: {
+            drawOnChartArea: false,
+          },
         },
       },
-    },
-  }
+    }),
+    [labels, bandWindows, suspiciousWindows, onSelectIndex]
+  )
 
   return (
-    <div className="h-[520px] rounded-xl border bg-white p-4 shadow-sm">
-      <Chart type="bar" data={data} options={options} />
+    <div className="rounded-xl border bg-white p-6 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">
+          กราฟระดับน้ำมันและความเร็ว
+        </h2>
+        <div className="flex items-center gap-4 text-xs text-gray-600">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-gray-200 rounded"></div>
+            <span>ยังไม่ได้ตรวจ</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-100 rounded"></div>
+            <span>ตรวจแล้ว</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-100 rounded"></div>
+            <span>ผิดปกติ</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="h-[480px]">
+        <Chart type="bar" data={chartData} options={chartOptions} />
+      </div>
+
+      <div className="mt-3 text-xs text-gray-500 text-center">
+        💡 เลื่อนเมาส์เพื่อซูม, คลิกจุดบนกราฟเพื่อเลือกช่วงเวลา
+      </div>
     </div>
   )
 }

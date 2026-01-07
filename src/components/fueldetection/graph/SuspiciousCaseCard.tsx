@@ -1,12 +1,14 @@
 "use client"
 
+import { memo } from "react"
 import dayjs from "dayjs"
 import utc from "dayjs/plugin/utc"
 import timezone from "dayjs/plugin/timezone"
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
-const FIX_OFFSET_MS = 7 * 60 * 60 * 1000
+
+const BANGKOK_TZ = "Asia/Bangkok"
 
 interface Props {
   plate: string
@@ -18,7 +20,7 @@ interface Props {
   onSelect: () => void
 }
 
-export function SuspiciousCaseCard({
+function SuspiciousCaseCardComponent({
   plate,
   startTs,
   endTs,
@@ -27,34 +29,78 @@ export function SuspiciousCaseCard({
   reviewer,
   onSelect,
 }: Props) {
+  const startDate = dayjs(startTs)
+  const endDate = dayjs(endTs)
+
+  const isSameDay = startDate.format("YYYY-MM-DD") === endDate.format("YYYY-MM-DD")
+
+  const formatFuelDiff = (diff: number | undefined) => {
+    if (diff == null) return "N/A"
+    return Math.abs(diff).toFixed(2)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      onSelect()
+    }
+  }
+
   return (
     <div
-      className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-1 cursor-pointer hover:ring-2 hover:ring-red-300"
+      role="button"
+      tabIndex={0}
+      aria-label={`รถ ${plate} น้ำมันลดลง ${formatFuelDiff(fuelDiff)} ลิตร`}
+      className="group rounded-xl border border-red-200 bg-red-50 p-4 space-y-2 cursor-pointer transition-all hover:border-red-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2"
       onClick={onSelect}
+      onKeyDown={handleKeyDown}
     >
-      <div className="font-semibold text-red-700">
-        ⚠️ รถ {plate}
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="font-semibold text-red-700 flex items-center gap-2">
+          <span className="text-lg" aria-hidden="true">
+            ⚠️
+          </span>
+          <span>รถ {plate}</span>
+        </div>
+        <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
+          {reviewer ? `ตรวจโดย ${reviewer}` : "ยังไม่ได้ตรวจสอบ"}
+        </div>
       </div>
 
-      <div className="text-sm text-gray-700">
-        ⏱ {dayjs(startTs-FIX_OFFSET_MS).tz("Asia/Bangkok").format("DD MMM YYYY HH:mm")} →{" "}
-        {dayjs(endTs-FIX_OFFSET_MS).tz("Asia/Bangkok").format("HH:mm")}
+      {/* Time Range */}
+      <div className="flex items-center gap-2 text-sm text-gray-700">
+        <span aria-hidden="true">⏱</span>
+        <time dateTime={startDate.toISOString()}>
+          {startDate.format("DD MMM YYYY HH:mm")}
+        </time>
+        <span>→</span>
+        <time dateTime={endDate.toISOString()}>
+          {isSameDay ? endDate.format("HH:mm") : endDate.format("DD MMM YYYY HH:mm")}
+        </time>
       </div>
 
+      {/* Fuel Change */}
       <div className="text-sm">
-        ⛽ ลดลง{" "}
+        <span aria-hidden="true">⛽</span>{" "}
         <span className="font-semibold text-red-700">
-          {fuelDiff?.toFixed(2) ?? "-"} ลิตร
+          น้ำมันลดลง {formatFuelDiff(fuelDiff)} ลิตร
         </span>
       </div>
 
-      {note && <div className="text-sm">📝 {note}</div>}
-
-      {reviewer && (
-        <div className="text-xs text-gray-500">
-          Reviewed by {reviewer}
+      {/* Note */}
+      {note && (
+        <div className="text-sm text-gray-600 bg-white/50 p-2 rounded border border-red-100">
+          <span aria-hidden="true">📝</span> {note}
         </div>
       )}
+
+      {/* Hover indicator */}
+      <div className="text-xs text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
+        คลิกเพื่อดูรายละเอียดบนกราฟ
+      </div>
     </div>
   )
 }
+
+export const SuspiciousCaseCard = memo(SuspiciousCaseCardComponent)

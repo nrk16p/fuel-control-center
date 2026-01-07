@@ -1,41 +1,75 @@
-import { Chart } from "chart.js"
+import { Chart, Plugin } from "chart.js"
 
-type Window = { fromIdx: number; toIdx: number }
+export type Window = { fromIdx: number; toIdx: number }
 
-export const reviewedBandsPlugin = {
+export interface ReviewedBandsOptions {
+  reviewed: Window[]
+  unreviewed: Window[]
+  suspicious: Window[]
+}
+
+// Color constants
+const COLORS = {
+  UNREVIEWED: "rgba(229, 231, 235, 0.35)", // Light gray
+  REVIEWED: "rgba(59, 130, 246, 0.18)", // Light blue
+  SUSPICIOUS: "rgba(239, 68, 68, 0.35)", // Light red
+} as const
+
+export const reviewedBandsPlugin: Plugin = {
   id: "reviewedBands",
-  beforeDraw(chart: any, _args: any, opts: any) {
-    const reviewed: Window[] = opts?.reviewed || []
-    const unreviewed: Window[] = opts?.unreviewed || []
-    const suspicious: Window[] = opts?.suspicious || []
+
+  beforeDraw(chart, _args, options) {
+    const opts = options as ReviewedBandsOptions
+
+    if (!opts) return
+
+    const { reviewed = [], unreviewed = [], suspicious = [] } = opts
 
     const { ctx, chartArea, scales } = chart
-    const x = scales.x
-    if (!x) return
 
-    const paint = (windows: Window[], color: string) => {
+    if (!chartArea || !scales.x) return
+
+    const xScale = scales.x
+
+    /**
+     * Paint windows with specified color
+     */
+    const paintWindows = (windows: Window[], color: string) => {
+      if (!windows.length) return
+
       ctx.save()
       ctx.fillStyle = color
-      for (const w of windows) {
-        const x1 = x.getPixelForValue(w.fromIdx)
-        const x2 = x.getPixelForValue(w.toIdx)
-        const left = Math.max(chartArea.left, Math.min(x1, x2))
-        const right = Math.min(chartArea.right, Math.max(x1, x2))
-        ctx.fillRect(
-          left,
-          chartArea.top,
-          right - left,
-          chartArea.bottom - chartArea.top
-        )
+
+      for (const window of windows) {
+        try {
+          const x1 = xScale.getPixelForValue(window.fromIdx)
+          const x2 = xScale.getPixelForValue(window.toIdx)
+
+          const left = Math.max(chartArea.left, Math.min(x1, x2))
+          const right = Math.min(chartArea.right, Math.max(x1, x2))
+
+          if (right > left) {
+            ctx.fillRect(
+              left,
+              chartArea.top,
+              right - left,
+              chartArea.bottom - chartArea.top
+            )
+          }
+        } catch (error) {
+          console.error("Error painting window:", error)
+        }
       }
+
       ctx.restore()
     }
 
-    // order matters (bottom → top)
-    paint(unreviewed, "rgba(229,231,235,0.35)")   // ⚪ unreviewed
-    paint(reviewed, "rgba(59,130,246,0.18)")     // 🔵 reviewed
-    paint(suspicious, "rgba(239,68,68,0.35)")    // 🔴 suspicious
+    // Paint in order (bottom → top layers)
+    paintWindows(unreviewed, COLORS.UNREVIEWED)
+    paintWindows(reviewed, COLORS.REVIEWED)
+    paintWindows(suspicious, COLORS.SUSPICIOUS)
   },
 }
 
-Chart.register(reviewedBandsPlugin as any)
+// Register plugin globally
+Chart.register(reviewedBandsPlugin)
