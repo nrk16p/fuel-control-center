@@ -33,8 +33,8 @@ export function SuspiciousCaseCard({
       </div>
 
       <div className="text-sm text-gray-700">
-        ⏱ {dayjs(startTs).format("DD MMM YYYY HH:mm")} →{" "}
-        {dayjs(endTs).format("HH:mm")}
+        ⏱ {dayjs.utc(startTs).format("DD MMM YYYY HH:mm")} →{" "}
+        {dayjs.utc(endTs).format("HH:mm")}
       </div>
 
       <div className="text-sm">
