@@ -11,6 +11,29 @@ function toTs(row: any) {
 }
 
 /* -------------------------------------------------
+   🔧 Parse "DD/MM/YYYY" + "เวลา" → timestamp
+   ใช้สำหรับ sort ใน API (ไม่แตะ DB)
+------------------------------------------------- */
+function parseThaiDateTime(row: any): number {
+  try {
+    if (!row["วันที่"]) return 0
+    const parts = String(row["วันที่"]).split("/")
+    if (parts.length !== 3) return 0
+
+    const dd = parts[0].padStart(2, "0")
+    const mm = parts[1].padStart(2, "0")
+    const yyyy = parts[2]
+    const time = row["เวลา"] && String(row["เวลา"]).length >= 5 ? row["เวลา"] : "00:00:00"
+
+    const iso = `${yyyy}-${mm}-${dd}T${time}`
+    const d = new Date(iso)
+    return isNaN(d.getTime()) ? 0 : d.getTime()
+  } catch {
+    return 0
+  }
+}
+
+/* -------------------------------------------------
    Build list of "DD/MM/YYYY" strings between start-end (inclusive)
    ✅ Fix for string-date comparison issue in Mongo
 ------------------------------------------------- */
@@ -91,16 +114,30 @@ export async function GET(request: Request) {
 
     /* -------------------------------------------------
        🔴 NO SAMPLING: fetch raw points only (visual layer)
+       ❌ ไม่ sort ใน Mongo ด้วย "วันที่/เวลา" (เพราะเป็น string)
+       ✅ จะ sort ใน API ด้วย Date จริงด้านล่าง
     ------------------------------------------------- */
     let jobs = await db
       .collection("driving_log")
       .find(query)
-      .sort({ "วันที่": 1, "เวลา": 1 })
       .toArray()
 
+    /* -------------------------------------------------
+       🧭 FILTER: moving only
+    ------------------------------------------------- */
     if (movingOnly) {
       jobs = jobs.filter(j => Number(j["ความเร็ว(กม./ชม.)"] ?? 0) > 0)
     }
+
+    /* -------------------------------------------------
+       🧮 SORT: Year → Month → Day → Time (ใน API)
+       แก้ปัญหา: 01/05/2026 มาก่อน 30/12/2025
+    ------------------------------------------------- */
+    jobs.sort((a, b) => {
+      const ta = parseThaiDateTime(a)
+      const tb = parseThaiDateTime(b)
+      return ta - tb
+    })
 
     /* -------------------------------------------------
        Optional: hide reviewed points (visual only)
