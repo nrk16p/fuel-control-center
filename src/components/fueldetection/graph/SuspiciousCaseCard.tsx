@@ -1,9 +1,8 @@
 "use client"
 
 import dayjs from "dayjs"
-import "dayjs/locale/th"
-
-dayjs.locale("th")
+import utc from "dayjs/plugin/utc"
+dayjs.extend(utc)
 
 interface Props {
   plate: string
