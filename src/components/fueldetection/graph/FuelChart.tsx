@@ -11,6 +11,13 @@ import zoomPlugin from "chartjs-plugin-zoom"
 import { Chart } from "react-chartjs-2"
 import "./reviewedBandsPlugin"
 
+import dayjs from "dayjs"
+import utc from "dayjs/plugin/utc"
+import timezone from "dayjs/plugin/timezone"
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
 /* ---------------------------------------
    Register Chart.js
 --------------------------------------- */
@@ -22,7 +29,7 @@ ChartJS.register(...registerables, zoomPlugin)
 type Window = { fromIdx: number; toIdx: number }
 
 interface Props {
-  labels: string[]
+  labels: string[]                // e.g. "23/12/2025 21:34"
   fuelData: number[]
   speedData: number[]
   bandWindows: {
@@ -72,19 +79,35 @@ export function FuelChart({
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: "index", intersect: false },
+
     onClick: (_evt, elements) => {
       const idx = elements?.[0]?.index
       if (idx != null) onSelectIndex(idx)
     },
+
     plugins: {
       tooltip: {
         callbacks: {
+          /* ---------------------------------------
+             🕒 FIX TIMEZONE: ใช้ label จาก DB โดยตรง
+          --------------------------------------- */
+          title: (items) => {
+            // ใช้ labels ที่คุณส่งเข้ามา (ไม่โดน timezone)
+            const idx = items[0]?.dataIndex
+            if (idx == null) return ""
+
+            const label = labels[idx] // "23/12/2025 21:34"
+            return label
+          },
+
+          /* แสดงค่า Y ตามเดิม */
           label: (ctx: TooltipItem<"bar" | "line">) =>
             ctx.dataset.label?.includes("น้ำมัน")
               ? `⛽ ${ctx.parsed.y} ลิตร`
               : `🚗 ${ctx.parsed.y} กม./ชม.`,
         },
       },
+
       zoom: {
         zoom: {
           wheel: { enabled: true },
@@ -103,6 +126,7 @@ export function FuelChart({
         suspicious: suspiciousWindows, // 🔴 layer บนสุด
       } as any,
     } as any,
+
     scales: {
       y: {
         min: 0,
