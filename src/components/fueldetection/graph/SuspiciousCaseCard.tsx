@@ -36,8 +36,8 @@ export function SuspiciousCaseCard({
       </div>
 
       <div className="text-sm text-gray-700">
-        ⏱ {dayjs(startTs).tz("Asia/Bangkok").format("DD MMM YYYY HH:mm")} →{" "}
-        {dayjs(endTs).tz("Asia/Bangkok").format("HH:mm")}
+        ⏱ {dayjs(startTs).format("DD MMM YYYY HH:mm")} →{" "}
+        {dayjs(endTs).format("HH:mm")}
       </div>
 
       <div className="text-sm">
