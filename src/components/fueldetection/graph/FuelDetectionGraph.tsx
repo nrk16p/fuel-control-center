@@ -233,7 +233,7 @@ export default function FuelDetectionGraph({ data, reviews, onReviewSaved }: Pro
         
         decision,
         note: note.trim(),
-        reviewer: "ีทีมเชื้อเพลิง",
+        reviewer: "fuel team",
         
         // Revision: camelCase (API reads body.revisionOf)
         revisionOf: null,

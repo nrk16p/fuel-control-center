@@ -62,7 +62,7 @@ export function FuelChart({
   suspiciousWindows,
   onSelectIndex,
 }: Props) {
-  // ✅ Store chart reference to preserve zoom state
+  // เก็บ instance เดิม → ป้องกันการ remount ที่ทำให้ zoom reset
   const chartRef = useRef<ChartJS<"bar" | "line", number[], string> | null>(null)
 
   const chartData: ChartData<"bar" | "line", number[], string> = useMemo(
@@ -97,27 +97,24 @@ export function FuelChart({
     [labels, fuelData, speedData]
   )
 
-  // ✅ Reset zoom handler
-  const handleResetZoom = useCallback(() => {
-    if (chartRef.current) {
-      chartRef.current.resetZoom()
-    }
-  }, [])
-
   const chartOptions: ChartOptions<"bar" | "line"> = useMemo(
     () => ({
       responsive: true,
       maintainAspectRatio: false,
-      // ✅ Disable animation to preserve zoom on updates
-      animation: {
-        duration: 0,
-      },
+
+      // 🔒 กัน re-render animation ที่อาจกระทบ scale
+      animation: { duration: 0 },
+
       interaction: {
         mode: "index" as const,
         intersect: false,
       },
-      // ✅ Click handler - zoom stays preserved
-      onClick: (_event, elements) => {
+
+      // 🔒 HARD BLOCK: Click = Select เท่านั้น, ห้าม plugin แตะ scale
+      onClick: (event, elements) => {
+        event.native?.preventDefault()
+        event.native?.stopPropagation()
+
         if (elements.length > 0) {
           const index = elements[0].index
           if (index != null) {
@@ -125,6 +122,13 @@ export function FuelChart({
           }
         }
       },
+
+      // 🔒 กัน double-click / gesture ใด ๆ
+      onDoubleClick: (event) => {
+        event.native?.preventDefault()
+        event.native?.stopPropagation()
+      },
+
       plugins: {
         legend: {
           display: true,
@@ -132,22 +136,16 @@ export function FuelChart({
           labels: {
             usePointStyle: true,
             padding: 15,
-            font: {
-              size: 12,
-            },
+            font: { size: 12 },
           },
         },
+
         tooltip: {
           enabled: true,
           backgroundColor: "rgba(0, 0, 0, 0.8)",
           padding: 12,
-          titleFont: {
-            size: 13,
-            weight: "bold" as const,
-          },
-          bodyFont: {
-            size: 12,
-          },
+          titleFont: { size: 13, weight: "bold" as const },
+          bodyFont: { size: 12 },
           callbacks: {
             title: (items: TooltipItem<"bar" | "line">[]) => {
               const index = items[0]?.dataIndex
@@ -156,38 +154,35 @@ export function FuelChart({
             label: (context: TooltipItem<"bar" | "line">) => {
               const label = context.dataset.label || ""
               const value = context.parsed.y
-
-              // Handle null/undefined values
-              if (value == null || isNaN(value)) {
-                return `${label}: N/A`
-              }
+              if (value == null || isNaN(value)) return `${label}: N/A`
 
               if (label.includes("น้ำมัน")) {
                 return `⛽ ${label}: ${value.toFixed(2)} ลิตร`
               } else if (label.includes("ความเร็ว")) {
                 return `🚗 ${label}: ${value.toFixed(0)} กม./ชม.`
               }
-
               return `${label}: ${value}`
             },
           },
         },
+
+        // 🔒 HARD CONFIG: Zoom เฉพาะ scroll / pinch เท่านั้น
         zoom: {
           zoom: {
             wheel: {
-              enabled: true,
+              enabled: true,     // ซูมเฉพาะ scroll
               speed: 0.1,
             },
             pinch: {
-              enabled: true,
+              enabled: true,     // มือถือ pinch ได้
             },
             drag: {
-              enabled: false,   // 🔒 ปิด drag-zoom (กัน click / double-click ชน zoom)
+              enabled: false,    // ❌ ปิด drag-zoom (ต้นเหตุที่ชนกับ click)
             },
             mode: "x" as const,
           },
           pan: {
-            enabled: true,      // ลาก = pan เท่านั้น
+            enabled: true,       // ลาก = pan อย่างเดียว
             mode: "x" as const,
           },
           limits: {
@@ -197,18 +192,18 @@ export function FuelChart({
             },
           },
         },
+
         reviewedBands: {
           unreviewed: bandWindows.unreviewed,
           reviewed: bandWindows.reviewed,
           suspicious: suspiciousWindows,
         } as ReviewedBandsOptions,
       },
+
       scales: {
         x: {
           display: true,
-          grid: {
-            display: false,
-          },
+          grid: { display: false },
           ticks: {
             maxRotation: 45,
             minRotation: 0,
@@ -225,14 +220,9 @@ export function FuelChart({
           title: {
             display: true,
             text: "ระดับน้ำมัน (ลิตร)",
-            font: {
-              size: 12,
-              weight: "bold" as const,
-            },
+            font: { size: 12, weight: "bold" as const },
           },
-          grid: {
-            color: "rgba(0, 0, 0, 0.05)",
-          },
+          grid: { color: "rgba(0, 0, 0, 0.05)" },
         },
         y1: {
           type: "linear" as const,
@@ -243,14 +233,9 @@ export function FuelChart({
           title: {
             display: true,
             text: "ความเร็ว (กม./ชม.)",
-            font: {
-              size: 12,
-              weight: "bold" as const,
-            },
+            font: { size: 12, weight: "bold" as const },
           },
-          grid: {
-            drawOnChartArea: false,
-          },
+          grid: { drawOnChartArea: false },
         },
       },
     }),
@@ -259,51 +244,26 @@ export function FuelChart({
 
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm">
-      {/* Header with Reset Zoom Button */}
+      {/* Header (ไม่มีปุ่ม reset แล้ว) */}
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold text-gray-900">
           กราฟระดับน้ำมันและความเร็ว
         </h2>
-        
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Legend */}
-          <div className="flex items-center gap-3 text-xs text-gray-600">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 bg-gray-200 rounded"></div>
-              <span>ยังไม่ได้ตรวจ</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 bg-blue-100 rounded"></div>
-              <span>ตรวจแล้ว</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 bg-red-100 rounded"></div>
-              <span>ผิดปกติ</span>
-            </div>
-          </div>
 
-          {/* Reset Zoom Button */}
-          <button
-            onClick={handleResetZoom}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200 hover:border-blue-300"
-            title="รีเซ็ต Zoom กลับมุมมองเริ่มต้น"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"
-              />
-            </svg>
-            <span className="hidden sm:inline">รีเซ็ต Zoom</span>
-            <span className="sm:hidden">รีเซ็ต</span>
-          </button>
+        {/* Legend */}
+        <div className="flex items-center gap-3 text-xs text-gray-600">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 bg-gray-200 rounded"></div>
+            <span>ยังไม่ได้ตรวจ</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 bg-blue-100 rounded"></div>
+            <span>ตรวจแล้ว</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 bg-red-100 rounded"></div>
+            <span>ผิดปกติ</span>
+          </div>
         </div>
       </div>
 
@@ -323,7 +283,7 @@ export function FuelChart({
           💡 <strong>Zoom:</strong> เลื่อนล้อเมาส์ | <strong>Pan:</strong> ลากเมาส์ | <strong>Select:</strong> คลิกจุดบนกราฟ
         </div>
         <div className="text-xs text-blue-600 text-center font-medium">
-          🔍 Zoom จะไม่รีเซ็ตเมื่อคลิกเลือกช่วงเวลา - กดปุ่ม "รีเซ็ต Zoom" เพื่อกลับมุมมองเริ่มต้น
+          🔒 คลิกจะไม่กระทบ Zoom อีกต่อไป (ไม่มีปุ่มรีเซ็ต)
         </div>
       </div>
     </div>
