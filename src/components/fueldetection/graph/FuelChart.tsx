@@ -97,6 +97,12 @@ export function FuelChart({
     [labels, fuelData, speedData]
   )
 
+  // ✅ Reset zoom handler
+  const handleResetZoom = useCallback(() => {
+    if (chartRef.current) {
+      chartRef.current.resetZoom()
+    }
+  }, [])
 
   const chartOptions: ChartOptions<"bar" | "line"> = useMemo(
     () => ({
@@ -181,6 +187,9 @@ export function FuelChart({
             enabled: true,
             mode: "x" as const,
           },
+                drag: {
+        enabled: false,  // ❌ ปิด drag-zoom (ตัวที่มักชนกับ click)
+      },
           limits: {
             x: {
               min: "original" as const,
