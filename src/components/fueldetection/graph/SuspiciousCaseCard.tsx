@@ -2,7 +2,10 @@
 
 import dayjs from "dayjs"
 import utc from "dayjs/plugin/utc"
+import timezone from "dayjs/plugin/timezone"
+
 dayjs.extend(utc)
+dayjs.extend(timezone)
 
 interface Props {
   plate: string
@@ -11,7 +14,7 @@ interface Props {
   fuelDiff?: number
   note?: string
   reviewer?: string
-  onSelect: () => void   // ✅ เพิ่ม
+  onSelect: () => void
 }
 
 export function SuspiciousCaseCard({
@@ -33,8 +36,8 @@ export function SuspiciousCaseCard({
       </div>
 
       <div className="text-sm text-gray-700">
-        ⏱ {dayjs.utc(startTs).format("DD MMM YYYY HH:mm")} →{" "}
-        {dayjs.utc(endTs).format("HH:mm")}
+        ⏱ {dayjs(startTs).tz("Asia/Bangkok").format("DD MMM YYYY HH:mm")} →{" "}
+        {dayjs(endTs).tz("Asia/Bangkok").format("HH:mm")}
       </div>
 
       <div className="text-sm">
@@ -45,6 +48,7 @@ export function SuspiciousCaseCard({
       </div>
 
       {note && <div className="text-sm">📝 {note}</div>}
+
       {reviewer && (
         <div className="text-xs text-gray-500">
           Reviewed by {reviewer}
