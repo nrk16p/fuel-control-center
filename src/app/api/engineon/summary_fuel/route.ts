@@ -40,7 +40,6 @@ export async function GET(request: Request) {
       // 3) เลือกฟิลด์ + rename + format วันที่
       {
         $project: {
-          _id: 1,
 
           // rename
           พจส: "$Supervisor",
