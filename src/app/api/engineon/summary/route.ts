@@ -36,7 +36,8 @@ export async function GET(request: Request) {
         not_plant_hhmm: 1,
         not_plant_liter: 1,
         year: 1,
-        month: 1
+        month: 1,
+        เลขรถ:1
       })
       .sort({ Date: -1, TruckPlateNo: 1 })
       .toArray()
