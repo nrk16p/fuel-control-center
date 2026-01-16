@@ -11,24 +11,41 @@ export async function GET(request: Request) {
     const db = client.db("analytics")
     const collection = db.collection("engineon_trip_summary")
 
-    const today = new Date()
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0))
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999))
-
-    const match: any = {
-      Date: { $gte: startOfDay, $lte: endOfDay }   // ✅ เฉพาะ "วันนี้"
-    }
-
+    const match: any = {}
     if (year) match.year = Number(year)
     if (month) match.month = Number(month)
 
     const data = await collection.aggregate([
+      // 1) แปลง Date (รองรับทั้ง string และ Date)
+      {
+        $addFields: {
+          DateObj: {
+            $cond: [
+              { $eq: [{ $type: "$Date" }, "string"] },
+              {
+                $dateFromString: {
+                  dateString: "$Date",
+                  timezone: "UTC"
+                }
+              },
+              "$Date"
+            ]
+          }
+        }
+      },
+
+      // 2) กรองตาม year & month (ไม่จำกัดวันนี้)
       { $match: match },
 
+      // 3) เลือกฟิลด์ + rename + format วันที่
       {
         $project: {
           _id: 1,
-          "พจส.": "$Supervisor",
+
+          // rename
+          พจส: "$Supervisor",
+          TruckNo: "$เลขรถ",
+
           "#trip": 1,
           version_type: 1,
           TotalMinutes: 1,
@@ -37,11 +54,11 @@ export async function GET(request: Request) {
           Duration_str_not_plant: 1,
           TruckPlateNo: 1,
 
-          // ✅ แปลง Date → 01/12/2025
+          // format วันที่ → DD/MM/YYYY
           Date: {
             $dateToString: {
               format: "%d/%m/%Y",
-              date: "$Date",
+              date: "$DateObj",
               timezone: "Asia/Bangkok"
             }
           },
@@ -55,19 +72,19 @@ export async function GET(request: Request) {
           not_plant_liter: 1,
           year: 1,
           month: 1,
-         TruckNo: "$เลขรถ",
           ประเภทยานพาหนะ: 1
         }
       },
 
-      { $sort: { TruckPlateNo: 1 } }
+      // 4) sort
+      { $sort: { Date: -1, TruckPlateNo: 1 } }
     ]).toArray()
 
     return NextResponse.json(data)
   } catch (error) {
     console.error("MongoDB Fetch Error:", error)
     return NextResponse.json(
-      { error: "Failed to fetch engineon trip summary" },
+      { error: "Failed to fetch engineon trip summary", detail: String(error) },
       { status: 500 }
     )
   }
