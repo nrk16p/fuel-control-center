@@ -128,7 +128,7 @@ export default function HomePage() {
           variants={fadeUp}
           className="mt-12 text-center text-xs text-gray-400"
         >
-          ข้อมูลที่เชื่อถือได้ คือรากฐานของการบริหารต้นทุนอย่างยั่งยืน
+          ข้อมูลที่เชื่อถือได้ คือรากฐานของการบริหารต้นทุนอย่างยั่งยืน V1
         </motion.p>
       </motion.div>
     </main>

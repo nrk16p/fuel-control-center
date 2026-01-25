@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { DashboardFilters } from '@/components/dashboard/filter'
-import { AlertCircle, Droplets, TrendingUp, CheckCircle, Clock, ClipboardCheck } from "lucide-react";
-import { Line, Bar, Doughnut } from 'react-chartjs-2'
+import { AlertCircle, Droplets,Clock, ClipboardCheck } from "lucide-react";
+import {  Bar, Doughnut } from 'react-chartjs-2'
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -268,34 +267,34 @@ export const FuelDetectionDashboard = ({ data, filters }: { data?: any; filters?
 
     // console.log('dataReviewStatus : ',dataReviewStatus)
     // 2 Fuel Difference by Driver - Combo Chart (Bar + Line)
-    const fuelDiffComboData = {
-        labels: dataFuelDiffData.length > 0 ? dataFuelDiffData.map((d: { driver: string }) => `${d.driver}`) : [],
-        datasets: [
-            {
-                type: 'bar' as const,
-                label: 'Fuel Difference (L)',
-                data: dataFuelDiffData.length > 0 ? dataFuelDiffData.map((d: { diff: number }) => d.diff) : [],
-                backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                borderColor: 'rgb(59, 130, 246)',
-                borderWidth: 1,
-                yAxisID: 'y',
-                order: 1
-            },
-            {
-                type: 'line' as const,
-                label: 'Duration (min)',
-                data: dataFuelDiffData.length > 0 ? dataFuelDiffData.map((d: { duration: number }) => d.duration) : [],
-                borderColor: 'rgba(234, 88, 12, 0.8)',
-                backgroundColor: 'rgba(234, 88, 12, 0.1)',
-                borderWidth: 2,
-                pointRadius: 1,
-                pointHoverRadius: 6,
-                yAxisID: 'y1',
-                tension: 0.3,
-                order: 0
-            }
-        ]
-    };
+    // const fuelDiffComboData = {
+    //     labels: dataFuelDiffData.length > 0 ? dataFuelDiffData.map((d: { driver: string }) => `${d.driver}`) : [],
+    //     datasets: [
+    //         {
+    //             type: 'bar' as const,
+    //             label: 'Fuel Difference (L)',
+    //             data: dataFuelDiffData.length > 0 ? dataFuelDiffData.map((d: { diff: number }) => d.diff) : [],
+    //             backgroundColor: 'rgba(59, 130, 246, 0.8)',
+    //             borderColor: 'rgb(59, 130, 246)',
+    //             borderWidth: 1,
+    //             yAxisID: 'y',
+    //             order: 1
+    //         },
+    //         {
+    //             type: 'line' as const,
+    //             label: 'Duration (min)',
+    //             data: dataFuelDiffData.length > 0 ? dataFuelDiffData.map((d: { duration: number }) => d.duration) : [],
+    //             borderColor: 'rgba(234, 88, 12, 0.8)',
+    //             backgroundColor: 'rgba(234, 88, 12, 0.1)',
+    //             borderWidth: 2,
+    //             pointRadius: 1,
+    //             pointHoverRadius: 6,
+    //             yAxisID: 'y1',
+    //             tension: 0.3,
+    //             order: 0
+    //         }
+    //     ]
+    // };
 
     const comboChartOptions = {
         responsive: true,
@@ -487,22 +486,7 @@ export const FuelDetectionDashboard = ({ data, filters }: { data?: any; filters?
                     </div>
 
 
-
-                    {/* 2. bar chart Sort Fuel Diff Sort Descending By Driver Name ไปอยู่ช่อง 3 */}
-                    <div className="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="text-md font-medium text-gray-700">Fuel Difference by Driver</h3>
-                        </div>
-                        <div className="h-80 flex items-center justify-center p-3">
-                            {dataFuelDiffData.length > 0 ? (
-                                <Bar data={fuelDiffComboData as any} options={{ ...comboChartOptions, plugins: { ...comboChartOptions.plugins, datalabels: { display: false } } }} />
-                            ) : (
-                                <ChartSkeleton />
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 3. Pie Chart % about reviewed_ok, reviewed_suspicious, need_follow_up, null (risk group not completed) */}
+                    {/* 2. Pie Chart % about reviewed_ok, reviewed_suspicious, need_follow_up, null (risk group not completed) */}
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
                             <h3 className="text-md font-medium text-gray-700">Review Status by Category</h3>

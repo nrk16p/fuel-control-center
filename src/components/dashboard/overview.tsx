@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Calendar, TrendingUp, TrendingDown } from 'lucide-react'
-import { Line, Bar } from 'react-chartjs-2'
 import { DashboardFilters } from './filter'
 import { FuelDetectionDashboard } from './function/fueldetection'
-import { EngineOnDashboard } from './function/engineon'
-import { SmartDistanceDashboard } from './function/smartdistance'
-
 
 
 export const OverviewDashboard = () => {
@@ -24,8 +19,8 @@ export const OverviewDashboard = () => {
       const list = ["fuelDetection"]
       for (const item of list) {
         try {
-          const yearsParam = years.join(',')
-          const monthsParam = months.join(',')
+          const yearsParam = years.join(',') || ""
+          const monthsParam = months.join(',') || ""  
           const response = await fetch(`/api/dashboard/${item}?years=${yearsParam}&months=${monthsParam}&plate=${plate}`, {
             method: 'GET',
             headers: {
