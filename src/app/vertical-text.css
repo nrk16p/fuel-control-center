@@ -1,0 +1,5 @@
+/* Vertical text styling for dashboard headers */
+.writing-mode-vertical-rl {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}

@@ -56,6 +56,13 @@ export default function Navbar() {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/overspeed" legacyBehavior passHref>
+                    <NavigationMenuLink className="nav-sub">
+                      🏃 Over-Speed
+                    </NavigationMenuLink>
+                  </Link>
+                </li>
+                <li>
                   <Link href="/smartdistance" legacyBehavior passHref>
                     <NavigationMenuLink className="nav-sub">
                       🗺️ Smart-Distance

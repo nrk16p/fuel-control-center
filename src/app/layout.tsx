@@ -28,9 +28,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Navbar />
 
         {/* 🧭 Main content area */}
-        <main className="flex-1 mt-10 max-w-7xl mx-auto p-6 w-full">
+        <main className="flex-1 mt-10 p-6 w-full">
           {children}
         </main>
+
+        {/* {children} */}
 
         {/* 🦶 Optional Footer */}
         <footer className="text-center text-xs text-gray-500 py-4 border-t mt-6">

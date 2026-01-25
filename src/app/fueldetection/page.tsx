@@ -164,7 +164,7 @@ export default function FuelDetectionPage() {
      Render
   --------------------------------------- */
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4 mx-auto max-w-7xl">
       <h1 className="text-2xl font-bold">
         ⛽ Fuel Detection{" "}
         <span className="text-gray-500">(รายคันรายวัน)</span>

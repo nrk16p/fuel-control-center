@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { EngineOnTable } from "@/components/engineon/EngineOnTable"
-import { EngineOnFilters } from "@/components/engineon/EngineOnFilters"
-import type { EngineTripSummary, SortKey } from "@/components/engineon/types"
-import { exportEngineOnExcel } from "@/lib/exportEngineOnExcel"
+import { OverspeedFilters } from "@/components/overspeed/OverspeedFilter"
+import type { Overspeed, SortKey } from "@/components/overspeed/types"
+import { OverspeedTable } from "@/components/overspeed/OverspeedTable"
+import { exportOverSpeedExcel } from "@/lib/exportOverSpeedExcel"
 
 /* -------------------------------------------------
    🔹 Current month / year (DEFAULT)
@@ -13,8 +13,8 @@ const now = new Date()
 const currentMonth = now.getMonth() + 1 // 1–12
 const currentYear = now.getFullYear()
 
-export default function EngineOnPage() {
-  const [data, setData] = useState<EngineTripSummary[]>([])
+export default function OverspeedPage() {
+  const [data, setData] = useState<Overspeed[]>([])
   const [loading, setLoading] = useState(true)
 
   /* -------------------------------------------------
@@ -28,7 +28,7 @@ export default function EngineOnPage() {
   /* -------------------------------------------------
      ↕ Sorting
   ------------------------------------------------- */
-  const [sortKey, setSortKey] = useState<SortKey>("Date")
+  const [sortKey, setSortKey] = useState<SortKey>("start_datetime")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
 
   /* -------------------------------------------------
@@ -41,11 +41,12 @@ export default function EngineOnPage() {
      Fetch data
   ------------------------------------------------- */
   useEffect(() => {
-    fetch("/api/engineon/summary")
+    fetch("/api/overspeed")
       .then((r) => r.json())
-      .then((d: EngineTripSummary[]) => {
+      .then((d: Overspeed[]) => {
         setData(d)
         setLoading(false)
+        console.log("Overspeed data loaded: ", d)
       })
       .catch(() => setLoading(false))
   }, [])
@@ -53,11 +54,6 @@ export default function EngineOnPage() {
   /* -------------------------------------------------
      Options
   ------------------------------------------------- */
-  const versionOptions = useMemo(
-    () =>
-      Array.from(new Set(data.map((d) => d.version_type))).filter(Boolean),
-    [data]
-  )
 
   const yearOptions = useMemo(
     () =>
@@ -77,15 +73,9 @@ export default function EngineOnPage() {
     if (q) {
       temp = temp.filter(
         (d) =>
-          d.TruckPlateNo.toLowerCase().includes(q) ||
-          d.Supervisor?.toLowerCase().includes(q)
+          d.vehicle.toLowerCase().includes(q) 
       )
     }
-
-    if (version !== "all") {
-      temp = temp.filter((d) => d.version_type === version)
-    }
-
     if (month !== "all") {
       temp = temp.filter((d) => d.month === month)
     }
@@ -143,7 +133,6 @@ export default function EngineOnPage() {
   ------------------------------------------------- */
   const resetFilters = () => {
     setSearch("")
-    setVersion("all")
     setMonth(currentMonth)
     setYear(currentYear)
     setPage(1)
@@ -153,9 +142,9 @@ export default function EngineOnPage() {
      Export
   ------------------------------------------------- */
   const handleExport = () => {
-    exportEngineOnExcel(
+    exportOverSpeedExcel(
       sorted,
-      `engineon_${year !== "all" ? year : "all"}_${
+      `overspeed_${year !== "all" ? year : "all"}_${
         month !== "all" ? month : "all"
       }.xlsx`
     )
@@ -169,7 +158,7 @@ export default function EngineOnPage() {
       {/* Header + Export */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">
-          🛠️ Engine-On Trip Summary
+          🏃 Over-Speed Summary
         </h1>
 
         <button
@@ -182,16 +171,13 @@ export default function EngineOnPage() {
       </div>
 
       {/* Filters */}
-      <EngineOnFilters
+      <OverspeedFilters
         search={search}
         setSearch={setSearch}
-        version={version}
-        setVersion={setVersion}
         month={month}
         setMonth={setMonth}
         year={year}
         setYear={setYear}
-        versionOptions={versionOptions}
         yearOptions={yearOptions}
         onReset={resetFilters}
       />
@@ -200,7 +186,7 @@ export default function EngineOnPage() {
       {loading ? (
         <div className="text-gray-500">Loading...</div>
       ) : (
-        <EngineOnTable
+        <OverspeedTable
           data={paginated}
           sortKey={sortKey}
           sortDir={sortDir}
