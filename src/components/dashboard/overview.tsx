@@ -11,7 +11,7 @@ import { SmartDistanceDashboard } from './function/smartdistance'
 export const OverviewDashboard = () => {
 
   const [filters, setFilters] = useState<{ years?: number[]; months?: number[]; search?: string }>({})
-  const [data, setData] = useState<{ fuelDetection?: any; vechicleRisk?: any }>({})
+  const [data, setData] = useState<{ fuelDetection?: any }>({})
 
   useEffect(() => {
 
@@ -21,7 +21,7 @@ export const OverviewDashboard = () => {
       const months = (filters as any).months;
       const plate = (filters as any).search || ''
 
-      const list = ["vechicleRisk", "fuelDetection"]
+      const list = ["fuelDetection"]
       for (const item of list) {
         try {
           const yearsParam = years.join(',')
@@ -54,7 +54,7 @@ export const OverviewDashboard = () => {
       /> 
 
       <FuelDetectionDashboard 
-      data={{ fuelDetection: data.fuelDetection, vechicleRisk: data.vechicleRisk }}
+      data={{ fuelDetection: data.fuelDetection }}
       filters={filters}
        />
        {/* <div className="h-2 bg-gray-100 my-10 rounded-full"></div> */}

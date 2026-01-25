@@ -7,9 +7,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
 
     const yearsParam = searchParams.get("years") 
-    const monthParam = searchParams.get("month") 
+    const monthParam = searchParams.get("months") 
     const plate = searchParams.get("plate")
-
+  
     const years = yearsParam
       ? yearsParam.split(',').map(y => parseInt(y.trim())).filter(y => !isNaN(y))
       : [new Date().getFullYear()]
@@ -23,8 +23,9 @@ export async function GET(request: Request) {
     const db = client.db("analytics")
     const col = db.collection("fuel_drop_reviews")
 
-    // Build date range for selected years and months
     let dateQueries = []
+
+    console.log(" months:", months);
     
     if (months.length > 0) {
       for (const year of years) {

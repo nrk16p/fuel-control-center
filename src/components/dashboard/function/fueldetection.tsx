@@ -31,7 +31,6 @@ ChartJS.register(
     ChartDataLabels
 )
 
-// Skeleton Component for Charts
 const ChartSkeleton = () => (
     <div className="flex flex-col items-center justify-center h-full space-y-4 animate-pulse">
         <div className="w-full max-w-md space-y-3">
@@ -46,7 +45,6 @@ const ChartSkeleton = () => (
     </div>
 )
 
-// Calendar Heatmap Component
 const CalendarHeatmap = ({ data, selectedMonths }: { data: any[]; selectedMonths?: number[] }) => {
     const activityByDate: { [key: string]: { count: number; items: any[] } } = {};
 
@@ -214,14 +212,12 @@ export const FuelDetectionDashboard = ({ data, filters }: { data?: any; filters?
         // console.log(" data:", data);
     }, [data]);
 
-    if (!data || !data.fuelDetection || !data.vechicleRisk) return null;
+    if (!data || !data.fuelDetection ) return null;
 
     // TOTAL REVIEWS - จำนวนรายการที่ review แล้วทั้งหมด
     const total_reviews = data.fuelDetection.length || 0;
 
     // ACTIVITY
-
-    const total_tasks = data.vechicleRisk.length || 0;
     const total_Reviews = new Set(data.fuelDetection.map((item: any) => item.plate)).size || 0;
 
     // SUSPICIOUS VEHICLES
