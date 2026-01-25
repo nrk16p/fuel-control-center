@@ -41,12 +41,17 @@ export default function OverspeedPage() {
      Fetch data
   ------------------------------------------------- */
   useEffect(() => {
-    fetch("/api/overspeed")
+    const params = new URLSearchParams()
+
+    if (year !== "all") params.append("year", String(year))
+    if (month !== "all") params.append("month", String(month))
+    const url = `/api/overspeed?${params.toString()}`
+    fetch(url)
       .then((r) => r.json())
       .then((d: Overspeed[]) => {
         setData(d)
         setLoading(false)
-        console.log("Overspeed data loaded: ", d)
+        // console.log("Overspeed data loaded: ", d)
       })
       .catch(() => setLoading(false))
   }, [])
@@ -73,7 +78,7 @@ export default function OverspeedPage() {
     if (q) {
       temp = temp.filter(
         (d) =>
-          d.vehicle.toLowerCase().includes(q) 
+          d.vehicle.toLowerCase().includes(q)
       )
     }
     if (month !== "all") {
@@ -144,8 +149,7 @@ export default function OverspeedPage() {
   const handleExport = () => {
     exportOverSpeedExcel(
       sorted,
-      `overspeed_${year !== "all" ? year : "all"}_${
-        month !== "all" ? month : "all"
+      `overspeed_${year !== "all" ? year : "all"}_${month !== "all" ? month : "all"
       }.xlsx`
     )
   }
