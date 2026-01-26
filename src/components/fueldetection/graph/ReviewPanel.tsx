@@ -55,7 +55,6 @@ function ReviewPanelComponent({
 }: Props) {
   // Display Thai date/time from data source
   const displayTime = `${selected.startDate} ${selected.startTime} → ${selected.endDate} ${selected.endTime}`
-  
   // Also show formatted version for clarity
   const startTime = dayjs(selected.startTs).format("DD MMM YYYY HH:mm")
   const endTime = dayjs(selected.endTs).format("DD MMM YYYY HH:mm")

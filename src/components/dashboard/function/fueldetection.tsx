@@ -14,7 +14,7 @@ import {
     Legend,
     Filler
 } from 'chart.js'
-import ChartDataLabels from 'chartjs-plugin-datalabels'
+
 
 ChartJS.register(
     CategoryScale,
@@ -26,8 +26,7 @@ ChartJS.register(
     Title,
     Tooltip,
     Legend,
-    Filler,
-    ChartDataLabels
+    Filler
 )
 
 const ChartSkeleton = () => (

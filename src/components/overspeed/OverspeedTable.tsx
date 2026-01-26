@@ -46,7 +46,17 @@ export function OverspeedTable({
 
   const formatDate = (d: string | null | undefined) => {
     if (!d) return "-"
-    return new Date(d).toLocaleDateString("th-TH")
+    const dt = new Date(d)
+    if (isNaN(dt.getTime())) return "-"
+    dt.setHours(dt.getHours() - 7)
+
+    const day = dt.getDate().toString().padStart(2, "0")
+    const month = (dt.getMonth() + 1).toString() 
+    const year = dt.getFullYear() + 543
+    const hours = dt.getHours().toString().padStart(2, "0")
+    const minutes = dt.getMinutes().toString().padStart(2, "0")
+
+    return `${day}/${month}/${year}, ${hours}:${minutes}`
   }
 
   const formatNumber = (n: number | null | undefined, decimals = 2) => {

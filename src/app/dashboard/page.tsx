@@ -2,8 +2,7 @@
 import { useState } from "react"
 import { ChartPie, Truck, UserRound } from "lucide-react"
 import { OverviewDashboard } from "@/components/dashboard/overview"
-import { DriverDashboard } from "@/components/dashboard/driver"
-import { ClientDashboard } from "@/components/dashboard/client" 
+
 
 export default function DashboardPage() {
   const [activeNav, setActiveNav] = useState("Overview")
