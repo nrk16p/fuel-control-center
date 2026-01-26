@@ -162,7 +162,7 @@ export default function OverspeedPage() {
       {/* Header + Export */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">
-          🏃 Over-Speed Summary
+          🚨 Over-Speed Summary
         </h1>
 
         <button

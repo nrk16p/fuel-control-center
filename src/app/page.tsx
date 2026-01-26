@@ -47,7 +47,7 @@ export default function HomePage() {
       badge: "Decision Engine",
     },
     {
-      title: "🏃 OverSpeed",
+      title: "🚨 OverSpeed",
       nav: "overspeed",
       desc: "ระบบดึงข้อมูลตรวจจับความเร็วรถเกินกำหนด",
       value: "ตรวจจับความเร็วรถ",

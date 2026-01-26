@@ -58,7 +58,7 @@ export default function Navbar() {
                 <li>
                   <Link href="/overspeed" legacyBehavior passHref>
                     <NavigationMenuLink className="nav-sub">
-                      🏃 Over-Speed
+                      🚨 Over-Speed
                     </NavigationMenuLink>
                   </Link>
                 </li>
