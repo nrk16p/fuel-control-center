@@ -1,11 +1,33 @@
 import { NextResponse } from "next/server"
 import clientPromise from "@/lib/mongodb"
 
+/**
+ * Convert UTC datetime -> Bangkok time (UTC+7)
+ */
+function toBkkDate(dt: Date | string) {
+  const d = new Date(dt)
+  return new Date(d.getTime() + 7 * 60 * 60 * 1000)
+}
+
+function dateOnly(d: Date) {
+  return d.toISOString().slice(0, 10) // YYYY-MM-DD
+}
+
+function timeOnly(d: Date) {
+  return d.toTimeString().slice(0, 8) // HH:mm:ss
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+
     const yearParam = searchParams.get("year")
     const monthParam = searchParams.get("month")
+
+    const year =
+      yearParam && yearParam !== "all" ? Number(yearParam) : undefined
+    const month =
+      monthParam && monthParam !== "all" ? Number(monthParam) : undefined
 
     const client = await clientPromise
     const db = client.db("analytics")
@@ -13,9 +35,9 @@ export async function GET(request: Request) {
 
     const query: any = {}
 
-    const year = yearParam && yearParam !== "all" ? Number(yearParam) : undefined
-    const month = monthParam && monthParam !== "all" ? Number(monthParam) : undefined
-
+    // --------------------------------------------------
+    // 🔍 Filter by UTC datetime (CORRECT WAY)
+    // --------------------------------------------------
     if (year && month) {
       const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0))
       const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
@@ -29,6 +51,9 @@ export async function GET(request: Request) {
       query.$expr = { $eq: [{ $month: "$start_datetime" }, month] }
     }
 
+    // --------------------------------------------------
+    // 📦 Fetch data
+    // --------------------------------------------------
     const data = await collection
       .find(query)
       .project({
@@ -47,16 +72,33 @@ export async function GET(request: Request) {
       .sort({ start_datetime: -1, vehicle: 1 })
       .toArray()
 
-    const dataWithMonthYear = data.map(item => {
-      const date = new Date(item.start_datetime)
+    // --------------------------------------------------
+    // 🔁 Enrich response (UTC -> BKK)
+    // --------------------------------------------------
+    const enriched = data.map((item) => {
+      const startBkk = toBkkDate(item.start_datetime)
+      const endBkk = toBkkDate(item.end_datetime)
+
       return {
         ...item,
-        month: date.getMonth() + 1,
-        year: date.getFullYear(),
+
+        // ✅ keep original UTC
+        start_datetime: item.start_datetime,
+        end_datetime: item.end_datetime,
+
+        // ✅ Bangkok date & time
+        start_date: dateOnly(startBkk),
+        start_time: timeOnly(startBkk),
+        end_date: dateOnly(endBkk),
+        end_time: timeOnly(endBkk),
+
+        // ✅ month/year (BKK based)
+        month: startBkk.getMonth() + 1,
+        year: startBkk.getFullYear(),
       }
     })
 
-    return NextResponse.json(dataWithMonthYear)
+    return NextResponse.json(enriched)
   } catch (error) {
     console.error("MongoDB Fetch Error:", error)
     return NextResponse.json(
