@@ -64,6 +64,7 @@ export async function GET(request: Request) {
         end_datetime: 1,
         duration_minutes: 1,
         sum_distance_km: 1,
+        record:1,
         avg_speed: 1,
         max_speed: 1,
         w_speed: 1,

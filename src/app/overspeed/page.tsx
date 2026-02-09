@@ -41,6 +41,7 @@ export default function OverspeedPage() {
      Fetch data
   ------------------------------------------------- */
   useEffect(() => {
+    setLoading(true)
     const params = new URLSearchParams()
 
     if (year !== "all") params.append("year", String(year))
@@ -51,10 +52,9 @@ export default function OverspeedPage() {
       .then((d: Overspeed[]) => {
         setData(d)
         setLoading(false)
-        // console.log("Overspeed data loaded: ", d)
       })
       .catch(() => setLoading(false))
-  }, [])
+  }, [month, year])
 
   /* -------------------------------------------------
      Options
