@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/mysql";
-
 export async function GET(req: Request) {
   try {
 
