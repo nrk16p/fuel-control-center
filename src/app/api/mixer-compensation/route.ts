@@ -15,14 +15,14 @@ export async function GET(req: Request) {
         TruckPlateNo,
         TruckPlateNo_clean,
         PlantName,
-        SiteMoveInAt,
-        SiteMoveOutAt,
+        DATE_FORMAT(SiteMoveInAt, '%Y-%m-%dT%H:%i:%s') AS SiteMoveInAt,
+        DATE_FORMAT(SiteMoveOutAt, '%Y-%m-%dT%H:%i:%s') AS SiteMoveOutAt,
         minutes_diff,
         tier,
         truck_type,
         compensate,
-        TicketCreateAt,
-        date_ticket,
+        DATE_FORMAT(TicketCreateAt, '%Y-%m-%dT%H:%i:%s') AS TicketCreateAt,
+        DATE_FORMAT(date_ticket, '%Y-%m-%d') AS date_ticket,
         is_complete_trip
       FROM mixer_compensation_v2
       WHERE 1=1
