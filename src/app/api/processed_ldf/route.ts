@@ -14,9 +14,7 @@ export async function GET(req: Request) {
 
     const start_date = searchParams.get("start_date")
     const end_date = searchParams.get("end_date")
-
-    const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "50")
+    const daysAgo = searchParams.get("daysAgo") // 👈 NEW
 
     // ================================
     // 🧠 CONNECT
@@ -40,8 +38,26 @@ export async function GET(req: Request) {
       filter["client"] = client
     }
 
-    // 📅 date range
-    if (start_date || end_date) {
+    // ================================
+    // 📅 DATE FILTER
+    // ================================
+
+    // 🔥 daysAgo (priority สูงสุด)
+    if (daysAgo) {
+      const d = new Date()
+      d.setDate(d.getDate() - parseInt(daysAgo))
+
+      const start = new Date(d.setHours(0, 0, 0, 0))
+      const end = new Date(d.setHours(23, 59, 59, 999))
+
+      filter["ออก LDT"] = {
+        $gte: start,
+        $lte: end
+      }
+    }
+
+    // 🔥 fallback: start_date / end_date
+    else if (start_date || end_date) {
       filter["ออก LDT"] = {}
 
       if (start_date) {
@@ -53,7 +69,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // 🔍 keyword search
+    // 🔍 keyword
     if (keyword) {
       filter["$or"] = [
         { TicketNo: { $regex: keyword, $options: "i" } },
@@ -64,9 +80,9 @@ export async function GET(req: Request) {
     }
 
     // ================================
-    // 🚀 QUERY
+    // 🚀 QUERY ALL
     // ================================
-    const cursor = collection
+    const docs = await collection
       .find(filter, {
         projection: {
           _id: 0,
@@ -82,13 +98,10 @@ export async function GET(req: Request) {
         }
       })
       .sort({ "ออก LDT": -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-
-    const docs = await cursor.toArray()
+      .toArray()
 
     // ================================
-    // 🧠 CLEAN RESPONSE
+    // 🧠 CLEAN
     // ================================
     const data = docs.map((d: any) => ({
       ticket_no: d.TicketNo,
@@ -102,17 +115,7 @@ export async function GET(req: Request) {
       client: d.client
     }))
 
-    const total = await collection.countDocuments(filter)
-
-    return NextResponse.json({
-      data,
-      pagination: {
-        page,
-        limit,
-        total,
-        total_pages: Math.ceil(total / limit)
-      }
-    })
+    return NextResponse.json(data)
 
   } catch (error) {
     console.error("❌ processed_ldf error:", error)
