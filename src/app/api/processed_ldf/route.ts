@@ -1,13 +1,20 @@
 import clientPromise from "@/lib/mongodb"
 import { NextResponse } from "next/server"
 
+// ================================
+// 🧠 helper: format dd/mm/yyyy
+// ================================
+function formatDate(d: Date) {
+  const dd = String(d.getDate()).padStart(2, "0")
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const yyyy = d.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
 
-    // ================================
-    // 🎯 PARAMS
-    // ================================
     const plate = searchParams.get("plate")
     const client = searchParams.get("client")
     const keyword = searchParams.get("keyword")
@@ -16,70 +23,69 @@ export async function GET(req: Request) {
     const end_date = searchParams.get("end_date")
     const daysAgo = searchParams.get("daysAgo")
 
-    // ================================
-    // 🧠 CONNECT
-    // ================================
     const mongo = await clientPromise
     const db = mongo.db("analytics")
     const collection = db.collection("processed_ldf")
 
-    // ================================
-    // 🧠 BUILD FILTER
-    // ================================
     const filter: any = {}
 
+    // ================================
     // 🚚 plate
+    // ================================
     if (plate) {
-      filter["ทะเบียนหัว"] = { $regex: plate, $options: "i" }
+      filter["ทะเบียนหัว"] = { $regex: plate.trim(), $options: "i" }
     }
 
+    // ================================
     // 🧠 client
+    // ================================
     if (client) {
       filter["client"] = client
     }
 
     // ================================
-    // 📅 DATE FILTER (IMPORTANT FIX)
+    // 📅 DATE FILTER (FIXED)
     // ================================
     if (daysAgo) {
-      const d = new Date()
-      d.setDate(d.getDate() - parseInt(daysAgo))
+      const days = parseInt(daysAgo)
 
-      const dd = String(d.getDate()).padStart(2, "0")
-      const mm = String(d.getMonth() + 1).padStart(2, "0")
-      const yyyy = d.getFullYear()
+      const today = new Date()
+      const dateList: string[] = []
 
-      const dateStr = `${dd}/${mm}/${yyyy}`
+      for (let i = 0; i <= days; i++) {
+        const d = new Date()
+        d.setDate(today.getDate() - i)
+        dateList.push(formatDate(d))
+      }
 
-      // 🔥 ใช้ regex กัน case format ไม่ตรง / space
+      // 🔥 match หลายวัน
       filter["วันที่"] = {
-        $regex: `^${dateStr}`,
-        $options: "i"
+        $in: dateList
       }
     }
 
-    // 🔥 fallback: range
+    // ================================
+    // 📅 RANGE (fallback)
+    // ================================
     else if (start_date || end_date) {
-      const buildDateStr = (dateStr: string) => {
-        const d = new Date(dateStr)
-        const dd = String(d.getDate()).padStart(2, "0")
-        const mm = String(d.getMonth() + 1).padStart(2, "0")
-        const yyyy = d.getFullYear()
-        return `${dd}/${mm}/${yyyy}`
+      const dateList: string[] = []
+
+      const start = start_date ? new Date(start_date) : new Date()
+      const end = end_date ? new Date(end_date) : new Date()
+
+      let current = new Date(start)
+
+      while (current <= end) {
+        dateList.push(formatDate(current))
+        current.setDate(current.getDate() + 1)
       }
 
-      filter["วันที่"] = {}
-
-      if (start_date) {
-        filter["วันที่"]["$gte"] = buildDateStr(start_date)
-      }
-
-      if (end_date) {
-        filter["วันที่"]["$lte"] = buildDateStr(end_date)
-      }
+      filter["วันที่"] = { $in: dateList }
     }
 
+    // ================================
     // 🔍 keyword
+    // ================================
     if (keyword) {
       filter["$or"] = [
         { LDT: { $regex: keyword, $options: "i" } },
@@ -91,7 +97,7 @@ export async function GET(req: Request) {
     console.log("🧠 FILTER:", filter)
 
     // ================================
-    // 🚀 QUERY ALL DATA
+    // 🚀 QUERY
     // ================================
     const docs = await collection
       .find(filter, {
@@ -109,11 +115,11 @@ export async function GET(req: Request) {
           updated_at: 1
         }
       })
-      .sort({ updated_at: -1 }) // 🔥 ล่าสุดก่อน
+      .sort({ updated_at: -1 })
       .toArray()
 
     // ================================
-    // 🧠 CLEAN RESPONSE
+    // 🧠 CLEAN
     // ================================
     const data = docs.map((d: any) => ({
       ticket_no: d.LDT,
