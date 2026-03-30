@@ -14,12 +14,6 @@ export async function GET(req: Request) {
     const project = searchParams.get("project")
     const keyword = searchParams.get("keyword")
 
-    const page = parseInt(searchParams.get("page") || "1")
-    const limitParam = searchParams.get("limit")
-    const limit = limitParam ? parseInt(limitParam) : 50
-
-    const noLimit = limit === 0
-
     // ================================
     // 🧠 CONNECT
     // ================================
@@ -58,9 +52,9 @@ export async function GET(req: Request) {
     }
 
     // ================================
-    // 🚀 QUERY
+    // 🚀 QUERY (ALL DATA)
     // ================================
-    let cursor = collection.find(filter, {
+    const docs = await collection.find(filter, {
       projection: {
         _id: 0,
         ทะเบียน: 1,
@@ -75,15 +69,7 @@ export async function GET(req: Request) {
         เป็นหาง: 1,
         มีปัมป์: 1
       }
-    })
-
-    if (!noLimit) {
-      cursor = cursor
-        .skip((page - 1) * limit)
-        .limit(limit)
-    }
-
-    const docs = await cursor.toArray()
+    }).toArray()
 
     // ================================
     // 🧠 CLEAN DATA
@@ -105,26 +91,7 @@ export async function GET(req: Request) {
       has_pump: d["มีปัมป์"] === "1"
     }))
 
-    // ================================
-    // 📊 COUNT (เฉพาะ pagination)
-    // ================================
-    let pagination = null
-
-    if (!noLimit) {
-      const total = await collection.countDocuments(filter)
-
-      pagination = {
-        page,
-        limit,
-        total,
-        total_pages: Math.ceil(total / limit)
-      }
-    }
-
-    return NextResponse.json({
-      data,
-      pagination
-    })
+    return NextResponse.json(data)
 
   } catch (error) {
     console.error("❌ vehiclemaster error:", error)
