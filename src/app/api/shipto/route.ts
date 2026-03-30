@@ -14,10 +14,6 @@ export async function GET(req: Request) {
     const name = searchParams.get("name")
     const is_active = searchParams.get("is_active")
 
-    // pagination
-    const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "50")
-
     // ================================
     // 🧠 CONNECT MONGO
     // ================================
@@ -30,12 +26,11 @@ export async function GET(req: Request) {
     // ================================
     const filter: any = {}
 
-    // ship_to_code
     if (ship_to_code) {
       filter["ship_to_code"] = ship_to_code
     }
 
-    // ✅ customer_id (รองรับหลายค่า)
+    // ✅ customer_id multi
     const customerParams = searchParams.getAll("customer_id")
 
     if (customerParams.length > 0) {
@@ -45,25 +40,22 @@ export async function GET(req: Request) {
       filter["customer_id"] = { $in: customerList }
     }
 
-    // จังหวัด
     if (province) {
       filter["จังหวัด"] = { $regex: province, $options: "i" }
     }
 
-    // ชื่อ
     if (name) {
       filter["ชื่อ"] = { $regex: name, $options: "i" }
     }
 
-    // is_active
     if (is_active !== null) {
       filter["is_active"] = is_active === "true"
     }
 
     // ================================
-    // 🚀 QUERY
+    // 🚀 QUERY ALL
     // ================================
-    const cursor = collection
+    const docs = await collection
       .find(filter, {
         projection: {
           _id: 0,
@@ -78,10 +70,7 @@ export async function GET(req: Request) {
         }
       })
       .sort({ updated_at: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-
-    const docs = await cursor.toArray()
+      .toArray()
 
     // ================================
     // 🧠 CLEAN RESPONSE
@@ -97,20 +86,7 @@ export async function GET(req: Request) {
       updated_at: d.updated_at
     }))
 
-    // ================================
-    // 📊 COUNT (optional)
-    // ================================
-    const total = await collection.countDocuments(filter)
-
-    return NextResponse.json({
-      data: result,
-      pagination: {
-        page,
-        limit,
-        total,
-        total_pages: Math.ceil(total / limit)
-      }
-    })
+    return NextResponse.json(result)
 
   } catch (error) {
     console.error("❌ Error fetching shipto:", error)
