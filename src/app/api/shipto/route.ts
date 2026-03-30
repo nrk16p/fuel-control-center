@@ -14,12 +14,8 @@ export async function GET(req: Request) {
     const name = searchParams.get("name")
     const is_active = searchParams.get("is_active")
 
-    const page = Number(searchParams.get("page") || 1)
-    const limit = Number(searchParams.get("limit") || 100)
-    const skip = (page - 1) * limit
-
     // ================================
-    // 🧠 CONNECT MONGO
+    // 🧠 CONNECT
     // ================================
     const client = await clientPromise
     const db = client.db("atms")
@@ -30,12 +26,12 @@ export async function GET(req: Request) {
     // ================================
     const filter: any = {}
 
-    // exact match
+    // exact
     if (ship_to_code) {
       filter.ship_to_code = ship_to_code.trim()
     }
 
-    // customer_id รองรับ:
+    // customer_id รองรับทั้ง:
     // ?customer_id=19,20
     // ?customer_id=19&customer_id=20
     const customerParams = searchParams
@@ -46,11 +42,11 @@ export async function GET(req: Request) {
 
     if (customerParams.length > 0) {
       filter.customer_id = {
-        $in: [...new Set(customerParams)]
+        $in: [...new Set(customerParams)] // unique
       }
     }
 
-    // partial match
+    // text search
     if (province) {
       filter["จังหวัด"] = { $regex: province.trim(), $options: "i" }
     }
@@ -59,40 +55,35 @@ export async function GET(req: Request) {
       filter["ชื่อ"] = { $regex: name.trim(), $options: "i" }
     }
 
-    // boolean filter
+    // boolean
     if (is_active !== null && is_active !== "") {
       filter.is_active = is_active === "true"
     }
 
-    console.log("🔥 shipto filter:", JSON.stringify(filter, null, 2))
+    console.log("🔥 FILTER:", JSON.stringify(filter, null, 2))
 
     // ================================
-    // 🚀 QUERY
+    // 🚀 QUERY (NO LIMIT)
     // ================================
-    const [docs, total] = await Promise.all([
-      collection
-        .find(filter, {
-          projection: {
-            _id: 0,
-            ship_to_code: 1,
-            customer_id: 1,
-            ชื่อ: 1,
-            จังหวัด: 1,
-            ระยะทาง: 1,
-            สภาพการจราจร: 1,
-            is_active: 1,
-            updated_at: 1
-          }
-        })
-        .sort({ updated_at: -1 })
-        .skip(skip)
-        .limit(limit)
-        .toArray(),
-      collection.countDocuments(filter)
-    ])
+    const docs = await collection
+      .find(filter, {
+        projection: {
+          _id: 0,
+          ship_to_code: 1,
+          customer_id: 1,
+          ชื่อ: 1,
+          จังหวัด: 1,
+          ระยะทาง: 1,
+          สภาพการจราจร: 1,
+          is_active: 1,
+          updated_at: 1
+        }
+      })
+      .sort({ updated_at: -1 })
+      .toArray()   // 🔥 no limit here
 
     // ================================
-    // 🧠 CLEAN RESPONSE
+    // 🧠 TRANSFORM
     // ================================
     const result = docs.map((d: any) => ({
       ship_to_code: d.ship_to_code || "",
@@ -106,18 +97,17 @@ export async function GET(req: Request) {
     }))
 
     return NextResponse.json({
-      total,
-      page,
-      limit,
+      total: result.length,
       data: result
     })
+
   } catch (error: any) {
     console.error("❌ Error fetching shipto:", error)
 
     return NextResponse.json(
       {
         error: "Server error",
-        message: error?.message || "unknown error"
+        message: error?.message || "unknown"
       },
       { status: 500 }
     )
