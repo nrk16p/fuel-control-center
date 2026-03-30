@@ -15,7 +15,10 @@ export async function GET(req: Request) {
     const keyword = searchParams.get("keyword")
 
     const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "50")
+    const limitParam = searchParams.get("limit")
+    const limit = limitParam ? parseInt(limitParam) : 50
+
+    const noLimit = limit === 0
 
     // ================================
     // 🧠 CONNECT
@@ -29,27 +32,22 @@ export async function GET(req: Request) {
     // ================================
     const filter: any = {}
 
-    // 🚚 plate
     if (plate) {
       filter["ทะเบียน"] = { $regex: plate, $options: "i" }
     }
 
-    // 🏢 branch
     if (branch) {
       filter["สาขา"] = branch
     }
 
-    // 🚛 type
     if (type) {
       filter["ประเภทยานพาหนะ"] = type
     }
 
-    // 📦 project
     if (project) {
       filter["โปรเจค"] = { $regex: project, $options: "i" }
     }
 
-    // 🔍 keyword
     if (keyword) {
       filter["$or"] = [
         { "ทะเบียน": { $regex: keyword, $options: "i" } },
@@ -62,25 +60,28 @@ export async function GET(req: Request) {
     // ================================
     // 🚀 QUERY
     // ================================
-    const cursor = collection
-      .find(filter, {
-        projection: {
-          _id: 0,
-          ทะเบียน: 1,
-          เลขรถ: 1,
-          สาขา: 1,
-          ยี่ห้อ: 1,
-          ประเภทยานพาหนะ: 1,
-          โปรเจค: 1,
-          แพล้นท์: 1,
-          ปี: 1,
-          น้ำหนัก: 1,
-          เป็นหาง: 1,
-          มีปัมป์: 1
-        }
-      })
-      .skip((page - 1) * limit)
-      .limit(limit)
+    let cursor = collection.find(filter, {
+      projection: {
+        _id: 0,
+        ทะเบียน: 1,
+        เลขรถ: 1,
+        สาขา: 1,
+        ยี่ห้อ: 1,
+        ประเภทยานพาหนะ: 1,
+        โปรเจค: 1,
+        แพล้นท์: 1,
+        ปี: 1,
+        น้ำหนัก: 1,
+        เป็นหาง: 1,
+        มีปัมป์: 1
+      }
+    })
+
+    if (!noLimit) {
+      cursor = cursor
+        .skip((page - 1) * limit)
+        .limit(limit)
+    }
 
     const docs = await cursor.toArray()
 
@@ -104,16 +105,25 @@ export async function GET(req: Request) {
       has_pump: d["มีปัมป์"] === "1"
     }))
 
-    const total = await collection.countDocuments(filter)
+    // ================================
+    // 📊 COUNT (เฉพาะ pagination)
+    // ================================
+    let pagination = null
 
-    return NextResponse.json({
-      data,
-      pagination: {
+    if (!noLimit) {
+      const total = await collection.countDocuments(filter)
+
+      pagination = {
         page,
         limit,
         total,
         total_pages: Math.ceil(total / limit)
       }
+    }
+
+    return NextResponse.json({
+      data,
+      pagination
     })
 
   } catch (error) {
