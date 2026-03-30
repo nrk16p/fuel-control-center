@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     // ================================
     const filter: any = {}
 
-    // 🚚 plate (ใช้ field จริง)
+    // 🚚 plate
     if (plate) {
       filter["ทะเบียนหัว"] = { $regex: plate, $options: "i" }
     }
@@ -39,10 +39,8 @@ export async function GET(req: Request) {
     }
 
     // ================================
-    // 📅 DATE FILTER (FIXED)
+    // 📅 DATE FILTER (IMPORTANT FIX)
     // ================================
-
-    // 🔥 daysAgo (priority สูงสุด)
     if (daysAgo) {
       const d = new Date()
       d.setDate(d.getDate() - parseInt(daysAgo))
@@ -53,29 +51,31 @@ export async function GET(req: Request) {
 
       const dateStr = `${dd}/${mm}/${yyyy}`
 
-      filter["วันที่"] = dateStr   // ✅ ใช้ string match
+      // 🔥 ใช้ regex กัน case format ไม่ตรง / space
+      filter["วันที่"] = {
+        $regex: `^${dateStr}`,
+        $options: "i"
+      }
     }
 
-    // 🔥 fallback: start_date / end_date (string range)
+    // 🔥 fallback: range
     else if (start_date || end_date) {
+      const buildDateStr = (dateStr: string) => {
+        const d = new Date(dateStr)
+        const dd = String(d.getDate()).padStart(2, "0")
+        const mm = String(d.getMonth() + 1).padStart(2, "0")
+        const yyyy = d.getFullYear()
+        return `${dd}/${mm}/${yyyy}`
+      }
+
       filter["วันที่"] = {}
 
       if (start_date) {
-        const d = new Date(start_date)
-        const dd = String(d.getDate()).padStart(2, "0")
-        const mm = String(d.getMonth() + 1).padStart(2, "0")
-        const yyyy = d.getFullYear()
-
-        filter["วันที่"]["$gte"] = `${dd}/${mm}/${yyyy}`
+        filter["วันที่"]["$gte"] = buildDateStr(start_date)
       }
 
       if (end_date) {
-        const d = new Date(end_date)
-        const dd = String(d.getDate()).padStart(2, "0")
-        const mm = String(d.getMonth() + 1).padStart(2, "0")
-        const yyyy = d.getFullYear()
-
-        filter["วันที่"]["$lte"] = `${dd}/${mm}/${yyyy}`
+        filter["วันที่"]["$lte"] = buildDateStr(end_date)
       }
     }
 
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
     console.log("🧠 FILTER:", filter)
 
     // ================================
-    // 🚀 QUERY ALL
+    // 🚀 QUERY ALL DATA
     // ================================
     const docs = await collection
       .find(filter, {
@@ -105,21 +105,22 @@ export async function GET(req: Request) {
           plan_distance: 1,
           PlantToSiteDistance: 1,
           "วันที่": 1,
-          client: 1
+          client: 1,
+          updated_at: 1
         }
       })
-      .sort({ "วันที่": -1 })
+      .sort({ updated_at: -1 }) // 🔥 ล่าสุดก่อน
       .toArray()
 
     // ================================
-    // 🧠 CLEAN
+    // 🧠 CLEAN RESPONSE
     // ================================
     const data = docs.map((d: any) => ({
       ticket_no: d.LDT,
-      plate: d["ทะเบียนหัว"],
+      plate: (d["ทะเบียนหัว"] || "").trim(),
       plant: d["แพล้นท์"],
       site: d["ชื่อไซร้งาน"],
-      qty: d.Quantity,
+      qty: d.Quantity || 0,
       distance_plan: Number(d.plan_distance || 0),
       distance_actual: Number(d.PlantToSiteDistance || 0),
       date: d["วันที่"],
