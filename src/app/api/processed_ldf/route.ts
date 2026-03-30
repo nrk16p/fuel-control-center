@@ -14,7 +14,7 @@ export async function GET(req: Request) {
 
     const start_date = searchParams.get("start_date")
     const end_date = searchParams.get("end_date")
-    const daysAgo = searchParams.get("daysAgo") // 👈 NEW
+    const daysAgo = searchParams.get("daysAgo")
 
     // ================================
     // 🧠 CONNECT
@@ -28,9 +28,9 @@ export async function GET(req: Request) {
     // ================================
     const filter: any = {}
 
-    // 🚚 plate
+    // 🚚 plate (ใช้ field จริง)
     if (plate) {
-      filter["TruckPlateNo"] = { $regex: plate, $options: "i" }
+      filter["ทะเบียนหัว"] = { $regex: plate, $options: "i" }
     }
 
     // 🧠 client
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     }
 
     // ================================
-    // 📅 DATE FILTER
+    // 📅 DATE FILTER (FIXED)
     // ================================
 
     // 🔥 daysAgo (priority สูงสุด)
@@ -47,37 +47,48 @@ export async function GET(req: Request) {
       const d = new Date()
       d.setDate(d.getDate() - parseInt(daysAgo))
 
-      const start = new Date(d.setHours(0, 0, 0, 0))
-      const end = new Date(d.setHours(23, 59, 59, 999))
+      const dd = String(d.getDate()).padStart(2, "0")
+      const mm = String(d.getMonth() + 1).padStart(2, "0")
+      const yyyy = d.getFullYear()
 
-      filter["ออก LDT"] = {
-        $gte: start,
-        $lte: end
-      }
+      const dateStr = `${dd}/${mm}/${yyyy}`
+
+      filter["วันที่"] = dateStr   // ✅ ใช้ string match
     }
 
-    // 🔥 fallback: start_date / end_date
+    // 🔥 fallback: start_date / end_date (string range)
     else if (start_date || end_date) {
-      filter["ออก LDT"] = {}
+      filter["วันที่"] = {}
 
       if (start_date) {
-        filter["ออก LDT"]["$gte"] = new Date(start_date)
+        const d = new Date(start_date)
+        const dd = String(d.getDate()).padStart(2, "0")
+        const mm = String(d.getMonth() + 1).padStart(2, "0")
+        const yyyy = d.getFullYear()
+
+        filter["วันที่"]["$gte"] = `${dd}/${mm}/${yyyy}`
       }
 
       if (end_date) {
-        filter["ออก LDT"]["$lte"] = new Date(end_date)
+        const d = new Date(end_date)
+        const dd = String(d.getDate()).padStart(2, "0")
+        const mm = String(d.getMonth() + 1).padStart(2, "0")
+        const yyyy = d.getFullYear()
+
+        filter["วันที่"]["$lte"] = `${dd}/${mm}/${yyyy}`
       }
     }
 
     // 🔍 keyword
     if (keyword) {
       filter["$or"] = [
-        { TicketNo: { $regex: keyword, $options: "i" } },
-        { TruckPlateNo: { $regex: keyword, $options: "i" } },
-        { PlantName: { $regex: keyword, $options: "i" } },
-        { SiteName: { $regex: keyword, $options: "i" } }
+        { LDT: { $regex: keyword, $options: "i" } },
+        { "ทะเบียนหัว": { $regex: keyword, $options: "i" } },
+        { "แพล้นท์": { $regex: keyword, $options: "i" } }
       ]
     }
+
+    console.log("🧠 FILTER:", filter)
 
     // ================================
     // 🚀 QUERY ALL
@@ -86,32 +97,32 @@ export async function GET(req: Request) {
       .find(filter, {
         projection: {
           _id: 0,
-          TicketNo: 1,
-          TruckPlateNo: 1,
-          PlantName: 1,
-          SiteName: 1,
+          LDT: 1,
+          "ทะเบียนหัว": 1,
+          "แพล้นท์": 1,
+          "ชื่อไซร้งาน": 1,
           Quantity: 1,
           plan_distance: 1,
           PlantToSiteDistance: 1,
-          "ออก LDT": 1,
+          "วันที่": 1,
           client: 1
         }
       })
-      .sort({ "ออก LDT": -1 })
+      .sort({ "วันที่": -1 })
       .toArray()
 
     // ================================
     // 🧠 CLEAN
     // ================================
     const data = docs.map((d: any) => ({
-      ticket_no: d.TicketNo,
-      plate: d.TruckPlateNo,
-      plant: d.PlantName,
-      site: d.SiteName,
+      ticket_no: d.LDT,
+      plate: d["ทะเบียนหัว"],
+      plant: d["แพล้นท์"],
+      site: d["ชื่อไซร้งาน"],
       qty: d.Quantity,
       distance_plan: Number(d.plan_distance || 0),
       distance_actual: Number(d.PlantToSiteDistance || 0),
-      ldt: d["ออก LDT"],
+      date: d["วันที่"],
       client: d.client
     }))
 
