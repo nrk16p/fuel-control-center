@@ -99,13 +99,13 @@ export async function POST(request: Request) {
 }
 
 /* ============================================================================
-   PUT – update plant
-   PUT /api/plants
+   PUT – update a drivers_risk row
+   PUT /api/drivers
 ============================================================================ */
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const { _id, client, plant_code, Latitude, Longitude } = body
+    const { _id, driver, plateh, truckno, month, year } = body
 
     if (!_id) {
       return NextResponse.json(
@@ -118,37 +118,38 @@ export async function PUT(request: Request) {
       updated_at: new Date(),
     }
 
-    if (client !== undefined) update.client = client
-    if (plant_code !== undefined) update.plant_code = plant_code
-    if (Latitude !== undefined) update.Latitude = Latitude
-    if (Longitude !== undefined) update.Longitude = Longitude
-
-    if (Latitude !== undefined && Longitude !== undefined) {
-      update.latlng = `${Latitude}, ${Longitude}`
-    }
+    if (driver !== undefined) update.driver = driver
+    if (plateh !== undefined) update.plateh = plateh
+    if (truckno !== undefined) update.truckno = truckno
+    if (month !== undefined) update.month = Number(month)
+    if (year !== undefined) update.year = Number(year)
 
     const clientMongo = await clientPromise
     const db = clientMongo.db("atms")
-    const col = db.collection("plants")
+    const col = db.collection("drivers_risk")
 
-    await col.updateOne(
+    const result = await col.updateOne(
       { _id: new ObjectId(_id) },
       { $set: update }
     )
 
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: "not found" }, { status: 404 })
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("❌ PUT plant error:", error)
+    console.error("❌ PUT drivers_risk error:", error)
     return NextResponse.json(
-      { error: "Failed to update plant" },
+      { error: "Failed to update drivers_risk" },
       { status: 500 }
     )
   }
 }
 
 /* ============================================================================
-   DELETE – delete plant by id
-   DELETE /api/plants?id=xxxx
+   DELETE – delete a drivers_risk row by id
+   DELETE /api/drivers?id=xxxx
 ============================================================================ */
 export async function DELETE(request: Request) {
   try {
@@ -164,15 +165,19 @@ export async function DELETE(request: Request) {
 
     const clientMongo = await clientPromise
     const db = clientMongo.db("atms")
-    const col = db.collection("plants")
+    const col = db.collection("drivers_risk")
 
-    await col.deleteOne({ _id: new ObjectId(id) })
+    const result = await col.deleteOne({ _id: new ObjectId(id) })
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: "not found" }, { status: 404 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("❌ DELETE plant error:", error)
+    console.error("❌ DELETE drivers_risk error:", error)
     return NextResponse.json(
-      { error: "Failed to delete plant" },
+      { error: "Failed to delete drivers_risk" },
       { status: 500 }
     )
   }

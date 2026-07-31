@@ -124,11 +124,21 @@ export default function FuelDetectionPage() {
 
       /* ----------------------------
          2) Review windows
+         API กรองด้วย epoch (startTs/endTs) — แปลงขอบวันจากเวลาไทย (UTC+7)
       ---------------------------- */
+      const thaiDayStartTs = (dmy: string) => {
+        const [d, m, y] = dmy.split("/").map(Number) // DD/MM/YYYY
+        return Date.UTC(y, m - 1, d, -7, 0, 0, 0) // 00:00:00 เวลาไทย
+      }
+      const thaiDayEndTs = (dmy: string) => {
+        const [d, m, y] = dmy.split("/").map(Number)
+        return Date.UTC(y, m - 1, d, 16, 59, 59, 999) // 23:59:59.999 เวลาไทย
+      }
+
       const p2 = new URLSearchParams({
         plate: plateDriver,
-        startDate,
-        endDate,
+        startTs: String(thaiDayStartTs(startDate)),
+        endTs: String(thaiDayEndTs(endDate)),
       })
 
       const fetchReviews = fetch(

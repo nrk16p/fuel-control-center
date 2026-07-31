@@ -124,16 +124,16 @@ analytics.fuel_drop_reviews (คนรีวิวเขียนเอง) ─�
 4. ทะเบียนรถ: strip prefix "สบ." ก่อน join เสมอ
 5. ETL log กลาง: `analytics.etl_jobs` (มีทั้ง `job_type` สำหรับ UI นี้ และ `pipeline`/`created_at` สำหรับ api-ncac)
 
-## 6. Known Issues (ควรแก้)
+## 6. Known Issues
 
-| ที่ | ปัญหา |
-|---|---|
-| `/api/drivers` PUT/DELETE | ยิงไปที่ `atms.plants` แทน `drivers_risk` (copy-paste bug) — ปุ่มลบในหน้า Drivers จึงลบผิด collection |
-| หน้า Drivers | ปีถูก hard-code [2025, 2026] (พังปี 2027), pagination แสดงเลขหน้าแต่ตารางโชว์ทุกแถว |
-| หน้าแรก | การ์ด "Master Data" ลิงก์ไป `/masterdata` ซึ่งไม่มีจริง (ของจริงคือ `/plants`) |
-| `/api/fuel-reviews` GET | หน้าเว็บส่ง startDate/endDate แต่ API อ่านเฉพาะ startTs/endTs — filter วันที่ไม่ทำงาน (กรองแค่ plate) |
-| Overspeed | เวลาแปลง +7/−7 ซ้อนกันระหว่าง API กับตาราง — แสดงผลถูกโดยบังเอิญ ถ้าแก้ฝั่งเดียวจะเพี้ยน |
-| driver_cost (payroll, คนละตัวกับ drivercost_ticket) | cron บน api-ncac fail เงียบทุกวันตั้งแต่ 14 ก.ค. — `mena-bi.driverCost` ไม่อัปเดต ควรดู Render logs |
+| ที่ | ปัญหา | สถานะ |
+|---|---|---|
+| `/api/drivers` PUT/DELETE | เคยยิงไปที่ `atms.plants` แทน `drivers_risk` (copy-paste bug) | ✅ แก้แล้ว 31/07/2026 |
+| หน้า Drivers | ปี hard-code [2025, 2026], pagination ไม่ทำงานจริง, บันทึกแล้วต้องสลับเดือนเพื่อรีเฟรช | ✅ แก้แล้ว 31/07/2026 |
+| หน้าแรก | การ์ด "Master Data" ลิงก์ไป `/masterdata` ที่ไม่มีจริง | ✅ ชี้ไป `/plants` แล้ว |
+| `/api/fuel-reviews` GET | หน้าเว็บส่ง startDate/endDate แต่ API อ่าน startTs/endTs — filter วันที่ไม่ทำงาน | ✅ ส่ง epoch ขอบวันเวลาไทยแล้ว |
+| Overspeed | เวลาแปลง +7/−7 ซ้อนกันระหว่าง API กับตาราง — แสดงผลถูกโดยบังเอิญ ถ้าแก้ฝั่งเดียวจะเพี้ยน | ⏳ คงไว้ก่อน (แก้ต้องเทสต์ทั้งคู่พร้อมกัน) |
+| driver_cost (payroll, คนละตัวกับ drivercost_ticket) | cron บน api-ncac fail เงียบทุกวันตั้งแต่ 14 ก.ค. — `mena-bi.driverCost` ไม่อัปเดต ควรดู Render logs | ⏳ รอตรวจ |
 
 ## 7. Deploy & Env
 

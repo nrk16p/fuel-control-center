@@ -5,6 +5,7 @@ export interface EngineTripSummary {
 
   // ───────── Basic ─────────
   Supervisor?: string
+  driver_source?: string
   TruckPlateNo: string
   Date: string
 

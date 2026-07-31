@@ -86,8 +86,17 @@ export function EngineOnTable({
 
             return (
               <tr key={r._id} className="border-t hover:bg-gray-50">
-                {/* Driver */}
-                <Td>{r.Supervisor || "-"}</Td>
+                {/* Driver — ถ้าไม่มีชื่อ hover เพื่อดูสาเหตุ (driver_source) */}
+                <Td>
+                  {r.Supervisor || (
+                    <span
+                      className="text-gray-400 cursor-help"
+                      title={r.driver_source || "ไม่มีตั๋วงานของคัน/วันนี้"}
+                    >
+                      -
+                    </span>
+                  )}
+                </Td>
 
                 {/* Plate */}
                 <Td>{r.TruckPlateNo}</Td>

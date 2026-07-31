@@ -97,6 +97,11 @@ export default function EngineOnPage() {
     return temp
   }, [data, search, version, month, year])
 
+  // กลับหน้า 1 ทุกครั้งที่เปลี่ยน filter — กันค้างอยู่หน้าที่ไม่มีข้อมูล
+  useEffect(() => {
+    setPage(1)
+  }, [search, version, month, year])
+
   /* -------------------------------------------------
      Sorting
   ------------------------------------------------- */

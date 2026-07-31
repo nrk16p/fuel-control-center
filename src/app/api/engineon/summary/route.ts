@@ -20,6 +20,7 @@ export async function GET(request: Request) {
             .project({
         _id: 1,
         Supervisor: 1,
+        driver_source: 1,
         "#trip": 1,
         version_type: 1,
         TotalMinutes: 1,

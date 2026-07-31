@@ -29,8 +29,9 @@ const ROW_HEIGHT = "h-10"   // row height
 export default function DriverProfile() {
   const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
   const thismonth = months[new Date().getMonth()]
-  const years = [2025, 2026]
-  const thisyear = years[new Date().getFullYear() - 2025]
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: currentYear - 2025 + 1 }, (_, i) => 2025 + i)
+  const thisyear = currentYear
   /* ================= State ================= */
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [open, setOpen] = useState(false)
@@ -90,7 +91,6 @@ export default function DriverProfile() {
 
   /* ================= Filter ================= */
   const filteredDriver = useMemo(() => {
-    setPage(1)
     return drivers.filter((p) => {
 
       const matchSearch =
@@ -100,6 +100,11 @@ export default function DriverProfile() {
       return matchSearch
     })
   }, [drivers, search, clientFilter])
+
+  // กลับหน้า 1 เมื่อผลลัพธ์เปลี่ยน (ค้นหา / เปลี่ยนเดือน-ปี)
+  useEffect(() => {
+    setPage(1)
+  }, [search, drivers])
 
   /* ================= Pagination ================= */
   const totalPages = Math.max(
@@ -128,19 +133,28 @@ export default function DriverProfile() {
     })
 
     if (!res.ok) {
-      alert("Failed to save driver")
+      Swal.fire({ title: "บันทึกไม่สำเร็จ", icon: "error" })
       return
     }
 
     setOpen(false)
     setEditing(null)
+    setUseractive([])
     setForm({ truckno: "", plateh: "", update: "", status: "", driver: "" })
+
+    // โหลดรายการใหม่ทันที — ไม่ต้องสลับเดือนเพื่อรีเฟรช
+    await loadDrivers(activeMonth, activeYear)
+    Swal.fire({ title: "บันทึกรายชื่อสำเร็จ!", icon: "success", timer: 1500, showConfirmButton: false })
   }
 
   /* ================= Delete ================= */
   const handleDelete = async (id: string) => {
     if (!confirm("ต้องการลบรายการกลุ่มเสี่ยงนี้ หรือไม่?")) return
-    await fetch(`/api/plants?id=${id}`, { method: "DELETE" })
+    const res = await fetch(`/api/drivers?id=${id}`, { method: "DELETE" })
+    if (!res.ok) {
+      Swal.fire({ title: "ลบไม่สำเร็จ", icon: "error" })
+      return
+    }
     setDrivers(drivers.filter((p) => p._id !== id))
     Swal.fire({
       title: "ลบรายการสำเร็จ!",
@@ -180,7 +194,7 @@ export default function DriverProfile() {
     <>
       <div className="relative flex flex-wrap rounded-lg bg-gray-200 p-1 lg:w-1/2 mb-5 text-sm shadow-sm">
         {years.map((year) => (
-          <label className="flex-1 text-center cursor-pointer">
+          <label key={year} className="flex-1 text-center cursor-pointer">
             <input
               type="radio"
               name="viewType"
@@ -202,7 +216,7 @@ export default function DriverProfile() {
       {/* MONTHS */}
       <div className="relative flex flex-wrap rounded-lg bg-gray-200 p-1 lg:w-full mb-5 text-sm shadow-sm">
         {months.map((month) => (
-          <label className="flex-1 text-center cursor-pointer">
+          <label key={month} className="flex-1 text-center cursor-pointer">
             <input
               type="radio"
               name="viewType"
@@ -254,7 +268,7 @@ export default function DriverProfile() {
           </thead>
 
           <tbody>
-            { filteredDriver.map((p) => (
+            { paginatedDrivers.map((p) => (
               <tr
                 key={p._id}
                 className={`border-t hover:bg-gray-50 ${ROW_HEIGHT}`}

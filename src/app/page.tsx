@@ -54,7 +54,7 @@ export default function HomePage() {
     },
     {
       title: "🏭 Master Data",
-      nav: "masterdata",
+      nav: "plants",
       desc: "ข้อมูลอ้างอิงกลางสำหรับ Plant และกลุ่มเสี่ยง",
       value: "Single Source of Truth",
     },
