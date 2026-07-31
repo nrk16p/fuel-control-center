@@ -103,7 +103,14 @@ export default function Navbar() {
             </NavigationMenuContent>
           </NavigationMenuItem>
 
-
+          {/* Docs */}
+          <NavigationMenuItem>
+            <Link href="/docs" legacyBehavior passHref>
+              <NavigationMenuLink className="nav-link">
+                📖 Docs
+              </NavigationMenuLink>
+            </Link>
+          </NavigationMenuItem>
 
         </NavigationMenuList>
       </NavigationMenu>
