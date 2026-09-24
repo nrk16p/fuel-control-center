@@ -11,8 +11,12 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu"
 import { Button } from "@/components/ui/button"
+import { signOut, useSession } from "next-auth/react"
+import { LogOut } from "lucide-react"
 
 export default function Navbar() {
+  const { data: session } = useSession()
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-white border-b px-6 py-3 shadow-sm">
       {/* Logo */}
@@ -114,6 +118,23 @@ export default function Navbar() {
 
         </NavigationMenuList>
       </NavigationMenu>
+
+      {/* User */}
+      {session?.user?.email && (
+        <div className="flex items-center gap-3">
+          <span className="hidden md:inline text-sm text-gray-600" title={session.user.email}>
+            {session.user.name ?? session.user.email}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            <LogOut className="h-4 w-4" />
+            ออกจากระบบ
+          </Button>
+        </div>
+      )}
     </nav>
   )
 }

@@ -4,7 +4,8 @@ import "leaflet/dist/leaflet.css" // ✅ Global import for Leaflet map styling
 import type { Metadata } from "next"
 import { Kanit } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import Navbar from "@/components/layout/Navbar"
+import Providers from "@/components/providers"
+import AppShell from "@/components/layout/AppShell"
 
 const kanit = Kanit({
   subsets: ["latin"],
@@ -25,20 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${kanit.className} bg-gray-50 text-gray-900 min-h-screen flex flex-col`}
       >
-        {/* 🔝 Persistent Navbar */}
-        <Navbar />
-
-        {/* 🧭 Main content area */}
-        <main className="flex-1 mt-10 p-6 w-full">
-          {children}
-        </main>
-
-        {/* {children} */}
-
-        {/* 🦶 Optional Footer */}
-        <footer className="text-center text-xs text-gray-500 py-4 border-t mt-6">
-          © {new Date().getFullYear()} Fuel Control Center — All rights reserved.
-        </footer>
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
 
         <Analytics />
       </body>
