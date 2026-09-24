@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState } from "react"
+import { Suspense, useCallback, useRef, useState } from "react"
 import dynamic from "next/dynamic"
 import { FuelDetectionFilter } from "@/components/fueldetection/filter"
 import type { FuelDetectionData } from "@/lib/types"
@@ -57,6 +57,18 @@ export default function FuelDetectionPage() {
   const [data, setData] = useState<FuelDetectionData[]>([])
   const [reviews, setReviews] = useState<ReviewRow[]>([])
   const [loading, setLoading] = useState(false)
+  // URL รีวิวของการค้นหาล่าสุด — ใช้โหลดรีวิวใหม่หลังบันทึก
+  const lastReviewsUrl = useRef<string | null>(null)
+
+  const reloadReviews = useCallback(async () => {
+    if (!lastReviewsUrl.current) return
+    try {
+      const res = await fetch(lastReviewsUrl.current, { cache: "no-store" })
+      if (res.ok) setReviews(await res.json())
+    } catch (err) {
+      console.error("Reload reviews error:", err)
+    }
+  }, [])
 
   /* ---------------------------------------
      🔍 Apply Filter
@@ -141,8 +153,9 @@ export default function FuelDetectionPage() {
         endTs: String(thaiDayEndTs(endDate)),
       })
 
+      lastReviewsUrl.current = `/api/fuel-reviews?${p2.toString()}`
       const fetchReviews = fetch(
-        `/api/fuel-reviews?${p2.toString()}`,
+        lastReviewsUrl.current,
         {
           cache: "no-store",
           headers: { "Cache-Control": "no-cache" },
@@ -207,6 +220,7 @@ export default function FuelDetectionPage() {
         <FuelDetectionGraph
           data={data}
           reviews={reviews}
+          onReviewSaved={reloadReviews}
         />
       )}
     </div>

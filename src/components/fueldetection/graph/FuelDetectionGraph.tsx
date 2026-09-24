@@ -1,10 +1,19 @@
 "use client"
 
 import { useMemo, useState, useCallback } from "react"
-import { FuelChart } from "./FuelChart"
+import { FuelChart, type FocusRange } from "./FuelChart"
 import { SuspiciousCaseCard } from "./SuspiciousCaseCard"
 import { ReviewPanel } from "./ReviewPanel"
+import { DetectedEventsList, type DetectedCase } from "./DetectedEventsList"
+import type { OverlayBand, OverlayMarker, OverlayRefuel } from "./fuelOverlayPlugin"
 import { toDateFromThai, overlap } from "@/lib/dt-th"
+import {
+  DEFAULT_DETECT,
+  detectFuelEvents,
+  smoothFuel,
+  type DetectOptions,
+  type FuelPoint,
+} from "@/lib/fuel-analysis"
 import type { FuelDetectionData } from "@/lib/types"
 
 /* ---------- Types ---------- */
@@ -24,8 +33,6 @@ export type Decision =
   | "reviewed_suspicious"
   | "false_positive"
   | "need_follow_up"
-
-type Window = { fromIdx: number; toIdx: number }
 
 interface Props {
   data: FuelDetectionData[]
@@ -50,23 +57,26 @@ interface SelectedRange {
 }
 
 /* ---------- Helpers ---------- */
-const buildWindows = (flags: boolean[]): Window[] => {
-  const windows: Window[] = []
-  for (let i = 0; i < flags.length; i++) {
-    if (!flags[i]) continue
-    let j = i
-    while (j + 1 < flags.length && flags[j + 1]) j++
-    windows.push({ fromIdx: i, toIdx: j })
-    i = j
-  }
-  return windows
+const DECISION_LABEL: Record<string, string> = {
+  reviewed_ok: "ปกติ",
+  reviewed_suspicious: "น่าสงสัย",
+  false_positive: "แจ้งเตือนผิด",
+  need_follow_up: "ต้องติดตาม",
 }
+
+// ผลรีวิวที่ถือว่า "ไม่ใช่เคส" → แสดงเป็นสีเทา
+const isCleared = (decision: string) => decision === "reviewed_ok" || decision === "false_positive"
+
+const MIN = 60_000
+
+type Row = FuelDetectionData & { ts: number }
 
 /* ---------- Component ---------- */
 export default function FuelDetectionGraph({ data, reviews, onReviewSaved }: Props) {
   /* ---------- Selection State ---------- */
   const [selStart, setSelStart] = useState<number | null>(null)
   const [selEnd, setSelEnd] = useState<number | null>(null)
+  const [focus, setFocus] = useState<FocusRange | null>(null)
 
   /* ---------- Review Form State ---------- */
   const [decision, setDecision] = useState<Decision>("reviewed_suspicious")
@@ -74,51 +84,95 @@ export default function FuelDetectionGraph({ data, reviews, onReviewSaved }: Pro
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  /* ---------- Memoized Data Transformations ---------- */
-  const labels = useMemo(() => data.map((d) => `${d.วันที่} ${d.เวลา}`), [data])
+  /* ---------- Detection settings ---------- */
+  const [detectOpts, setDetectOpts] = useState<DetectOptions>(DEFAULT_DETECT)
 
-  const fuelData = useMemo(() => data.map((d) => Number(d.น้ำมัน ?? 0)), [data])
-
-  const speedData = useMemo(
-    () => data.map((d) => Number(d["ความเร็ว(กม./ชม.)"] ?? 0)),
-    [data]
-  )
-
-  const tsData = useMemo<(number | null)[]>(
-    () =>
-      data.map((d) => {
-        const dt = toDateFromThai(d.วันที่, d.เวลา)
-        return dt ? dt.getTime() : null
-      }),
-    [data]
-  )
-
-  /* ---------- Reviewed/Unreviewed Bands ---------- */
-  const bandWindows = useMemo(() => {
-    const reviewedFlags = tsData.map((ts) =>
-      ts == null ? false : reviews.some((r) => overlap(ts, ts, r.start_ts, r.end_ts))
-    )
-
-    return {
-      reviewed: buildWindows(reviewedFlags),
-      unreviewed: buildWindows(reviewedFlags.map((v) => !v)),
+  /* ---------- Data (เฉพาะจุดที่แปลงเวลาได้ เรียงตามเวลา) ---------- */
+  const rows = useMemo<Row[]>(() => {
+    const out: Row[] = []
+    for (const d of data) {
+      const dt = toDateFromThai(d.วันที่, d.เวลา)
+      if (dt) out.push({ ...d, ts: dt.getTime() })
     }
-  }, [reviews, tsData])
+    return out.sort((a, b) => a.ts - b.ts)
+  }, [data])
 
-  /* ---------- Suspicious Cases ---------- */
-  const suspiciousReviews = useMemo(
-    () => reviews.filter((r) => r.decision === "reviewed_suspicious"),
-    [reviews]
+  const points = useMemo<FuelPoint[]>(
+    () =>
+      rows.map((r) => ({
+        ts: r.ts,
+        fuel: Number(r.น้ำมัน ?? 0),
+        speed: Number(r["ความเร็ว(กม./ชม.)"] ?? 0),
+        status: r.สถานะ ?? "",
+      })),
+    [rows]
   )
 
-  const suspiciousWindows = useMemo<Window[]>(() => {
-    const flags = tsData.map((ts) =>
-      ts == null
-        ? false
-        : suspiciousReviews.some((r) => overlap(ts, ts, r.start_ts, r.end_ts))
-    )
-    return buildWindows(flags)
-  }, [suspiciousReviews, tsData])
+  const series = useMemo(
+    () => ({
+      ts: points.map((p) => p.ts),
+      raw: points.map((p) => p.fuel),
+      speed: points.map((p) => p.speed),
+      status: points.map((p) => p.status),
+    }),
+    [points]
+  )
+
+  const smooth = useMemo(() => smoothFuel(points), [points])
+
+  const events = useMemo(() => detectFuelEvents(points, smooth, detectOpts), [points, smooth, detectOpts])
+
+  /* ---------- Selection → timestamps ---------- */
+  const selection = useMemo(() => {
+    if (selStart == null) return null
+    return { startTs: series.ts[selStart], endTs: selEnd != null ? series.ts[selEnd] : null }
+  }, [selStart, selEnd, series.ts])
+
+  /* ---------- Detected cases (+ ผลรีวิวที่ทับช่วง) ---------- */
+  const cases = useMemo<DetectedCase[]>(() => {
+    return events
+      .filter((e) => e.kind !== "refuel")
+      .map((e, i) => {
+        // API เรียง created_at ล่าสุดก่อน → ตัวแรกที่ทับคือผลล่าสุด
+        const review = reviews.find((r) => overlap(e.startTs, e.endTs, r.start_ts, r.end_ts))
+        const selected =
+          selection != null &&
+          overlap(e.startTs, e.endTs, selection.startTs, selection.endTs ?? selection.startTs)
+        return {
+          ...e,
+          n: i + 1,
+          reviewLabel: review ? DECISION_LABEL[review.decision] ?? review.decision : null,
+          reviewTone: review && isCleared(review.decision) ? "muted" : "clay",
+          selected,
+        }
+      })
+  }, [events, reviews, selection])
+
+  /* ---------- Overlay (วาดทับกราฟ) ---------- */
+  const overlay = useMemo(() => {
+    const bands: OverlayBand[] = [
+      ...reviews.map((r) => ({
+        startTs: r.start_ts,
+        endTs: r.end_ts,
+        tone: isCleared(r.decision) ? ("forest" as const) : ("clay" as const),
+        strength: 0.08,
+      })),
+      ...cases
+        .filter((c) => c.reviewLabel == null && !c.selected)
+        .map((c) => ({ startTs: c.startTs, endTs: c.endTs, tone: "clay" as const, strength: 0.1 })),
+    ]
+    const markers: OverlayMarker[] = cases.map((c) => ({
+      n: c.n,
+      ts: (c.startTs + c.endTs) / 2,
+      fuel: smooth[c.startIdx],
+      tone: c.reviewTone,
+      selected: c.selected,
+    }))
+    const refuels: OverlayRefuel[] = events
+      .filter((e) => e.kind === "refuel")
+      .map((e) => ({ ts: e.endTs, fuel: smooth[e.endIdx], amount: e.amount }))
+    return { bands, markers, refuels, selection }
+  }, [reviews, cases, events, smooth, selection])
 
   /* ---------- Selection Handlers ---------- */
   const handleSelectIndex = useCallback(
@@ -137,13 +191,32 @@ export default function FuelDetectionGraph({ data, reviews, onReviewSaved }: Pro
     [selStart, selEnd]
   )
 
+  // ซูมกราฟให้เห็นช่วงนั้นพร้อมบริบทรอบ ๆ
+  const focusOn = useCallback((startTs: number, endTs: number) => {
+    const pad = Math.max(30 * MIN, endTs - startTs)
+    setFocus({ min: startTs - pad, max: endTs + pad, key: Date.now() })
+  }, [])
+
+  const selectFromCase = useCallback(
+    (c: DetectedCase) => {
+      const review = reviews.find((r) => overlap(c.startTs, c.endTs, r.start_ts, r.end_ts))
+      setSelStart(c.startIdx)
+      setSelEnd(c.endIdx)
+      setDecision((review?.decision as Decision) ?? "reviewed_suspicious")
+      setNote(review?.note ?? "")
+      setError(null)
+      focusOn(c.startTs, c.endTs)
+    },
+    [reviews, focusOn]
+  )
+
   const selectFromReview = useCallback(
     (review: ReviewRow) => {
       let startIdx: number | null = null
       let endIdx: number | null = null
 
-      tsData.forEach((ts, i) => {
-        if (ts != null && overlap(ts, ts, review.start_ts, review.end_ts)) {
+      series.ts.forEach((ts, i) => {
+        if (overlap(ts, ts, review.start_ts, review.end_ts)) {
           if (startIdx == null) startIdx = i
           endIdx = i
         }
@@ -156,9 +229,10 @@ export default function FuelDetectionGraph({ data, reviews, onReviewSaved }: Pro
         setDecision(review.decision as Decision)
         setNote(review.note ?? "")
         setError(null)
+        focusOn(review.start_ts, review.end_ts)
       }
     },
-    [tsData]
+    [series.ts, focusOn]
   )
 
   const clearSelection = useCallback(() => {
@@ -171,31 +245,36 @@ export default function FuelDetectionGraph({ data, reviews, onReviewSaved }: Pro
   /* ---------- Selected Range Data ---------- */
   const selectedRange = useMemo<SelectedRange | null>(() => {
     if (selStart == null || selEnd == null) return null
+    const a = rows[selStart]
+    const b = rows[selEnd]
+    if (!a || !b) return null
 
-    const startTs = tsData[selStart]
-    const endTs = tsData[selEnd]
-
-    if (startTs == null || endTs == null) return null
-
-    const fuelStart = Number(data[selStart].น้ำมัน ?? 0)
-    const fuelEnd = Number(data[selEnd].น้ำมัน ?? 0)
+    // ค่าที่บันทึกยังเป็นค่าดิบจากเซนเซอร์ (เหมือนเดิม)
+    const fuelStart = Number(a.น้ำมัน ?? 0)
+    const fuelEnd = Number(b.น้ำมัน ?? 0)
 
     return {
       startIdx: selStart,
       endIdx: selEnd,
-      plate: data[selStart].ทะเบียนพาหนะ,
-      startDate: data[selStart].วันที่,      // ✅ Thai date string
-      startTime: data[selStart].เวลา,         // ✅ Time string
-      endDate: data[selEnd].วันที่,          // ✅ Thai date string
-      endTime: data[selEnd].เวลา,            // ✅ Time string
-      startTs,
-      endTs,
+      plate: a.ทะเบียนพาหนะ,
+      startDate: a.วันที่,      // ✅ Thai date string
+      startTime: a.เวลา,         // ✅ Time string
+      endDate: b.วันที่,          // ✅ Thai date string
+      endTime: b.เวลา,            // ✅ Time string
+      startTs: a.ts,
+      endTs: b.ts,
       fuelStart,
       fuelEnd,
       fuelDiff: fuelStart - fuelEnd,
-      durationMin: Math.round((endTs - startTs) / 60000),
+      durationMin: Math.round((b.ts - a.ts) / 60000),
     }
-  }, [selStart, selEnd, tsData, data])
+  }, [selStart, selEnd, rows])
+
+  /* ---------- Suspicious reviews (บันทึกไว้แล้ว) ---------- */
+  const suspiciousReviews = useMemo(
+    () => reviews.filter((r) => r.decision === "reviewed_suspicious"),
+    [reviews]
+  )
 
   /* ---------- Save Review ---------- */
   const saveReview = useCallback(async () => {
@@ -301,11 +380,13 @@ export default function FuelDetectionGraph({ data, reviews, onReviewSaved }: Pro
     <div className="space-y-6">
       {/* Chart */}
       <FuelChart
-        labels={labels}
-        fuelData={fuelData}
-        speedData={speedData}
-        bandWindows={bandWindows}
-        suspiciousWindows={suspiciousWindows}
+        ts={series.ts}
+        raw={series.raw}
+        smooth={smooth}
+        speed={series.speed}
+        status={series.status}
+        overlay={overlay}
+        focus={focus}
         onSelectIndex={handleSelectIndex}
       />
 
@@ -321,6 +402,16 @@ export default function FuelDetectionGraph({ data, reviews, onReviewSaved }: Pro
           onNoteChange={setNote}
           onSave={saveReview}
           onCancel={clearSelection}
+        />
+      )}
+
+      {/* จุดที่ระบบตรวจพบ */}
+      {rows.length > 0 && (
+        <DetectedEventsList
+          cases={cases}
+          opts={detectOpts}
+          onOptsChange={setDetectOpts}
+          onSelect={selectFromCase}
         />
       )}
 
