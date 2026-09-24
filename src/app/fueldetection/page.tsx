@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import dynamic from "next/dynamic"
 import { FuelDetectionFilter } from "@/components/fueldetection/filter"
 import type { FuelDetectionData } from "@/lib/types"
@@ -181,10 +181,13 @@ export default function FuelDetectionPage() {
       </h1>
 
       {/* 🔍 Filter */}
-      <FuelDetectionFilter
-        query={handleQueryApply}
-        isLoading={loading}
-      />
+      {/* Suspense: filter อ่าน ?plate= ด้วย useSearchParams */}
+      <Suspense>
+        <FuelDetectionFilter
+          query={handleQueryApply}
+          isLoading={loading}
+        />
+      </Suspense>
 
       {/* 📊 Graph */}
       {loading ? (

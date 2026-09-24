@@ -1,28 +1,28 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import Navbar from "@/components/layout/Navbar"
+import Sidebar from "@/components/layout/Sidebar"
 
-// หน้า /login แสดงเต็มจอ ไม่มี Navbar/footer
+// หน้า /login แสดงเต็มจอ ไม่มี Sidebar/footer
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   if (pathname === "/login") return <>{children}</>
 
   return (
-    <>
-      {/* 🔝 Persistent Navbar */}
-      <Navbar />
+    <div className="lg:flex">
+      <Sidebar />
 
-      {/* 🧭 Main content area */}
-      <main className="flex-1 mt-10 p-6 w-full">
-        {children}
-      </main>
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        {/* 🧭 Main content area */}
+        <main className="flex-1 w-full min-w-0 px-4 pt-7 pb-8 sm:px-6 lg:px-10">
+          {children}
+        </main>
 
-      {/* 🦶 Optional Footer */}
-      <footer className="text-center text-xs text-gray-500 py-4 border-t mt-6">
-        © {new Date().getFullYear()} Fuel Control Center — All rights reserved.
-      </footer>
-    </>
+        <footer className="border-t border-line py-4 text-center text-xs text-muted-ink">
+          © {new Date().getFullYear()} Fuel Control Center — All rights reserved.
+        </footer>
+      </div>
+    </div>
   )
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState,useEffect, use } from "react"
+import { useSearchParams } from "next/navigation"
 import { DateRange } from "@/components/ui/daterange"
 import PlateDropdown from "./platelist"
 
@@ -26,7 +27,9 @@ export function FuelDetectionFilter({ query, isLoading }: FuelDetectionFilterPro
   startDate.setDate(yesterday.getDate() - 8)
 
   const [dateRange, setDateRange] = useState({ from: startDate, to: yesterday })
-  const [plateDriver, setPlateDriver] = useState("")
+  // ?plate= มาจากช่องค้นหาหน้าแรก — เติมทะเบียนให้ (ยังต้องกดค้นหาเอง)
+  const searchParams = useSearchParams()
+  const [plateDriver, setPlateDriver] = useState(() => searchParams.get("plate") ?? "")
   const [plateList, setPlateList] = useState<string[]>([])
   const [statuses, setStatuses] = useState<string[]>([]) // empty = all
   const [movingOnly, setMovingOnly] = useState(false)

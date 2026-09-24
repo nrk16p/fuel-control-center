@@ -47,13 +47,13 @@ function LoginContent() {
         <div className="rounded-2xl border border-white/10 bg-white/8 backdrop-blur-md px-6 py-7">
           {/* Brand */}
           <div className="mb-4 text-center">
-            <h1 className="text-xl font-extrabold tracking-[0.15em] bg-clip-text text-transparent bg-linear-to-r from-blue-700 via-blue-500 to-sky-400 uppercase mb-1">
+            <h1 className="text-xl font-extrabold tracking-[0.15em] bg-clip-text text-transparent bg-linear-to-r from-forest-dark via-forest to-[#4E7D5F] uppercase mb-1">
               Fuel Control
             </h1>
             <div className="flex items-center justify-center gap-2 my-2.5">
-              <div className="h-px w-8 bg-blue-400/35" />
-              <div className="h-1 w-1 rounded-full bg-blue-400/70" />
-              <div className="h-px w-8 bg-blue-400/35" />
+              <div className="h-px w-8 bg-forest/35" />
+              <div className="h-1 w-1 rounded-full bg-forest/70" />
+              <div className="h-px w-8 bg-forest/35" />
             </div>
             <p className="text-md font-medium text-black/60">
               Fuel Control Center

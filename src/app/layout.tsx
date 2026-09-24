@@ -2,14 +2,21 @@ import "./globals.css"
 import "leaflet/dist/leaflet.css" // ✅ Global import for Leaflet map styling
 
 import type { Metadata } from "next"
-import { Kanit } from "next/font/google"
+import { Anuphan, Fraunces } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import Providers from "@/components/providers"
 import AppShell from "@/components/layout/AppShell"
 
-const kanit = Kanit({
+const anuphan = Anuphan({
+  subsets: ["thai", "latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-anuphan",
+})
+
+const fraunces = Fraunces({
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["500", "600"],
+  variable: "--font-fraunces",
 })
 
 export const metadata: Metadata = {
@@ -22,9 +29,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="th" suppressHydrationWarning>
       <body
-        className={`${kanit.className} bg-gray-50 text-gray-900 min-h-screen flex flex-col`}
+        className={`${anuphan.variable} ${fraunces.variable} font-sans bg-cream text-ink min-h-screen`}
       >
         <Providers>
           <AppShell>{children}</AppShell>
