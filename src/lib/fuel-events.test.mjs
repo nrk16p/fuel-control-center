@@ -144,3 +144,16 @@ test("the list says when it is cut short and offers more, up to the cap", () => 
   assert.equal(nextLimit(100, 100), null)
   assert.equal(nextLimit(MAX_LIMIT, 9000), null)
 })
+
+test("follow-up decisions have their own filter so they do not vanish among decided", () => {
+  const r = parse("status=follow_up")
+  assert.equal(r.ok, true)
+  assert.deepEqual(buildEventsQuery(r.value), {
+    date_key: { $gte: "2026-10-05", $lte: "2026-10-05" }, status: { $in: ["decided"] }, decision: "follow_up",
+  })
+  const legit = events.find((e) => e.plate === "สบ.71-7463")
+  const followUp = { ...legit, decision: "follow_up" }
+  assert.equal(matchesFilter(followUp, r.value), true)
+  assert.equal(matchesFilter(legit, r.value), false)
+  assert.equal(matchesFilter(followUp, parse("status=decided").value), true)
+})

@@ -53,6 +53,7 @@ export const COVERAGE_LABEL: Record<CoverageStatus, string> = {
 export const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
   waiting: "รอตรวจ",
   decided: "ตัดสินแล้ว",
+  follow_up: "ติดตาม",
   auto_closed: "ปิดอัตโนมัติ",
   audit: "ตรวจสุ่ม",
   all: "ทั้งหมด",

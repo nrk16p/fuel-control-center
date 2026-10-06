@@ -4,16 +4,19 @@
 
 import type { EventClass, EventStatus, FuelEvent, Source } from "./fuel-types"
 
-export const STATUS_FILTERS = ["waiting", "decided", "auto_closed", "audit", "all"] as const
+export const STATUS_FILTERS = ["waiting", "decided", "follow_up", "auto_closed", "audit", "all"] as const
 export type StatusFilter = (typeof STATUS_FILTERS)[number]
 
 const STATUS_GROUPS: Record<StatusFilter, EventStatus[] | null> = {
   waiting: ["open", "audit"],
   decided: ["decided"],
+  follow_up: ["decided"],
   auto_closed: ["auto_closed"],
   audit: ["audit"],
   all: null,
 }
+/** ตัวกรองที่ต้องดูคำตัดสินด้วย — "ติดตาม" = ตัดสินแล้วว่าให้ตามต่อ (ไม่งั้นจมอยู่ในตัดสินแล้ว) */
+const STATUS_DECISION: Partial<Record<StatusFilter, string>> = { follow_up: "follow_up" }
 export const EVENT_CLASSES: readonly EventClass[] = ["suspected_loss", "gap_loss", "noise", "consumption", "refuel", "sensor_fault"]
 export const SOURCES: readonly Source[] = ["besttech", "terminus"]
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -83,6 +86,8 @@ export function buildEventsQuery(filter: EventFilter): Record<string, unknown> {
   const query: Record<string, unknown> = { date_key: { $gte: filter.from, $lte: filter.to } }
   const statuses = STATUS_GROUPS[filter.status]
   if (statuses) query.status = { $in: statuses }
+  const decision = STATUS_DECISION[filter.status]
+  if (decision) query.decision = decision
   if (filter.cls) query.class = filter.cls
   if (filter.source) query.sources = filter.source
   if (filter.branch) query.branch = filter.branch
@@ -93,14 +98,16 @@ export function buildEventsQuery(filter: EventFilter): Record<string, unknown> {
 
 /** ความหมายเดียวกับ buildEventsQuery — ใช้กรอง fixture ในโหมดตัวอย่าง */
 export function matchesFilter(
-  e: Pick<FuelEvent, "date_key" | "status" | "class" | "sources" | "branch" | "fleet" | "plant">,
+  e: Pick<FuelEvent, "date_key" | "status" | "decision" | "class" | "sources" | "branch" | "fleet" | "plant">,
   filter: EventFilter,
 ): boolean {
   const statuses = STATUS_GROUPS[filter.status]
+  const decision = STATUS_DECISION[filter.status]
   return (
     e.date_key >= filter.from &&
     e.date_key <= filter.to &&
     (!statuses || statuses.includes(e.status)) &&
+    (!decision || e.decision === decision) &&
     (!filter.cls || e.class === filter.cls) &&
     (!filter.source || e.sources.includes(filter.source)) &&
     (!filter.branch || e.branch === filter.branch) &&
