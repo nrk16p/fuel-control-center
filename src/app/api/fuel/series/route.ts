@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { analytics, fixturesOn } from "@/lib/fuel-db"
 import { FIXTURE_EVENTS, FIXTURE_SERIES } from "@/lib/fuel-fixtures"
-import { buildSeries, coverageVerdict, lastSeenOf, type SeriesDoc } from "@/lib/fuel-series"
+import { buildSeries, coverageVerdict, lastSeenOf, plateCandidates, resolvePlate, type SeriesDoc } from "@/lib/fuel-series"
 import type { FuelEvent, FuelEventDoc, Source } from "@/lib/fuel-types"
 import { decodeColumns, fuelToLitres, toDegrees } from "@/lib/series-codec"
 import { addDays, daySpan, isDateKey, yesterdayKey } from "@/lib/thai-time"
@@ -31,10 +31,12 @@ export async function GET(request: Request) {
     // ถ้าช่วงนี้ไม่มีข้อมูลเลย: เอกสารล่าสุดที่มีข้อมูล เพื่อบอกว่าหายไปตั้งแต่เมื่อไร/ที่ไหน
     let latest: SeriesDoc | null = null
     const inRange = (d: { date_key: string }) => d.date_key >= from && d.date_key <= to
+    // ค้นจากหน้าแรกส่งแบบ "71-8623" มา แต่ gps_series เก็บ "สบ.71-8623"
+    const plates = plateCandidates(plate)
     if (fixturesOn()) {
-      const own = FIXTURE_SERIES.filter((d) => d.plate === plate)
+      const own = FIXTURE_SERIES.filter((d) => plates.includes(d.plate))
       docs = own.filter((d) => inRange(d) && (!source || d.source === source))
-      events = FIXTURE_EVENTS.filter((e) => e.plate === plate && inRange(e))
+      events = FIXTURE_EVENTS.filter((e) => plates.includes(e.plate) && inRange(e))
       if (!docs.some((d) => d.n > 0)) {
         latest = own.filter((d) => d.n > 0).sort((a, b) => b.date_key.localeCompare(a.date_key))[0] ?? null
       }
@@ -42,17 +44,17 @@ export async function GET(request: Request) {
       const db = await analytics()
       const gps = db.collection<SeriesDoc>("gps_series")
       docs = await gps
-        .find({ plate, date_key: { $gte: from, $lte: to }, ...(source ? { source: source as Source } : {}) })
+        .find({ plate: { $in: plates }, date_key: { $gte: from, $lte: to }, ...(source ? { source: source as Source } : {}) })
         .toArray()
       events = await db
         .collection<FuelEventDoc>("fuel_events")
-        .find({ plate, date_key: { $gte: from, $lte: to } }, { projection: { features: 0 } })
+        .find({ plate: { $in: plates }, date_key: { $gte: from, $lte: to } }, { projection: { features: 0 } })
         .toArray()
-      if (!docs.some((d) => d.n > 0)) latest = await gps.findOne({ plate, n: { $gt: 0 } }, { sort: { date_key: -1 } })
+      if (!docs.some((d) => d.n > 0)) latest = await gps.findOne({ plate: { $in: plates }, n: { $gt: 0 } }, { sort: { date_key: -1 } })
     }
     const sorted = [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
     return NextResponse.json({
-      plate,
+      plate: resolvePlate(plate, [...docs.map((d) => d.plate), latest?.plate, ...events.map((e) => e.plate)]),
       from,
       to,
       series: buildSeries(docs, codec),

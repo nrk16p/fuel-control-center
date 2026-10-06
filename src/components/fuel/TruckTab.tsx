@@ -104,6 +104,11 @@ export function TruckTab() {
       {data.loading && <div className="h-[420px] animate-pulse rounded-[22px] bg-line" />}
       {data.data && !data.loading && (
         <>
+          {data.data.plate !== plate && (
+            <p className="text-[13px] text-muted-ink">
+              พบข้อมูลในชื่อ <span className="font-semibold text-ink">{data.data.plate}</span> (ค้นด้วย {plate})
+            </p>
+          )}
           <NoDataBanner verdict={data.data.verdict} lastSeen={data.data.lastSeen} />
           {series.map((s) => (
             <SeriesChart key={s.source} series={s} events={data.data?.events ?? []} height={440} title={`${data.data?.plate} · ${SOURCE_LABEL[s.source]}`} />

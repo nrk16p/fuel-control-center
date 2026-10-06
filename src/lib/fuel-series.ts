@@ -145,6 +145,19 @@ export function pointNear(seriesList: SourceSeries[], ts: number): { lat: number
   return best
 }
 
+const LEGACY_PLATE_RE = /^\d{2}-\d{4}$/
+
+/** ทะเบียนที่ใช้ค้น gps_series — แบบเดิม "71-8623" (ค้นจากหน้าแรก, รีวิวเก่า) ค้นแบบ "สบ.71-8623" ด้วย */
+export function plateCandidates(input: string): string[] {
+  const plate = input.trim()
+  return LEGACY_PLATE_RE.test(plate) ? [plate, `สบ.${plate}`] : [plate]
+}
+
+/** ทะเบียนที่เจอจริงในข้อมูล (ตัวแรกที่มี) ไม่งั้นค่าที่ผู้ใช้พิมพ์ */
+export function resolvePlate(input: string, found: (string | null | undefined)[]): string {
+  return found.find((plate): plate is string => !!plate) ?? input.trim()
+}
+
 export type CoverageVerdict = { kind: CoverageStatus; sources: Source[] }
 const VERDICT_ORDER: CoverageStatus[] = ["ok", "stuck", "no_sensor", "offline", "no_data"]
 

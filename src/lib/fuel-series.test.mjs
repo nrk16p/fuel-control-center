@@ -2,7 +2,9 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
 
-import { buildSeries, coverageRows, coverageVerdict, lastSeenOf, levelAt, pointNear, sliceWindow, statusOf } from "./fuel-series.ts"
+import {
+  buildSeries, coverageRows, coverageVerdict, lastSeenOf, levelAt, plateCandidates, pointNear, resolvePlate, sliceWindow, statusOf,
+} from "./fuel-series.ts"
 import { decodeColumns, fuelToLitres, toDegrees } from "./series-codec.ts"
 
 const docs = JSON.parse(readFileSync(new URL("./__fixtures__/gps-series-sample.json", import.meta.url), "utf8"))
@@ -74,4 +76,14 @@ test("coverage rows put problems first and fill missing fields", () => {
     plate: "สบ.71-8623", source: "besttech", truck_code: null, status: "offline", minutes: 0,
     fuel_valid_share: 0, last: null, moved_km: 0, tank_l: 200, tank_from: "default",
   })
+})
+
+test("legacy xx-xxxx plates (home search) also find the province form gps_series uses", () => {
+  assert.deepEqual(plateCandidates("71-8623"), ["71-8623", "สบ.71-8623"])
+  assert.deepEqual(plateCandidates(" สบ.71-8623 "), ["สบ.71-8623"])
+  assert.deepEqual(plateCandidates("3ฒภ5383"), ["3ฒภ5383"])
+  assert.equal(resolvePlate("71-8623", [undefined, null, "สบ.71-8623"]), "สบ.71-8623")
+  assert.equal(resolvePlate(" 71-8623 ", []), "71-8623")
+  const legacy = plateCandidates("71-8623")
+  assert.ok(docs.some((d) => legacy.includes(d.plate)), "the fixture truck is found from the legacy form")
 })
