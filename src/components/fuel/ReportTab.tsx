@@ -11,7 +11,7 @@ import { useJson } from "./useJson"
 
 type ReportResponse = { from: string; to: string; settings: FuelSettings; report: Report; rows: Record<string, string | number | null>[] }
 type CoverageResponse = { date: string; rows: CoverageRow[] }
-type SettingsResponse = { settings: FuelSettings; updated_at: string | null; updated_by: string | null }
+type SettingsResponse = { settings: FuelSettings; updated_at: string | null; updated_by?: string | null }
 
 const field = "mt-1 block h-9 rounded-[12px] border border-line-input bg-surface px-2 text-[13px] text-ink"
 
@@ -161,7 +161,7 @@ export function ReportTab() {
           key={settings.data.updated_at ?? "default"}
           initial={settings.data.settings}
           updatedAt={settings.data.updated_at}
-          updatedBy={settings.data.updated_by}
+          updatedBy={settings.data.updated_by ?? null}
           onSaved={settings.reload}
         />
       )}

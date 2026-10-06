@@ -30,6 +30,15 @@ export function withDefaults(doc: Record<string, unknown> | null | undefined): F
   return out
 }
 
+export type SettingsPayload = { settings: FuelSettings; updated_at: Date | null; updated_by?: string | null }
+
+/** คำตอบของ GET /api/fuel/settings — /api เปิดสาธารณะ จึงบอกอีเมลผู้แก้ล่าสุดเฉพาะคนที่ล็อกอินแล้ว */
+export function settingsPayload(doc: SettingsDoc | null, signedIn: boolean): SettingsPayload {
+  const payload: SettingsPayload = { settings: withDefaults(doc), updated_at: doc?.updated_at ?? null }
+  if (signedIn) payload.updated_by = doc?.updated_by ?? null
+  return payload
+}
+
 export function validateSettings(body: unknown): { ok: true; value: FuelSettings } | { ok: false; error: string } {
   const input = (body ?? {}) as Record<string, unknown>
   const value: FuelSettings = { ...DEFAULT_SETTINGS }

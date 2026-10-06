@@ -2,15 +2,15 @@ import { getServerSession } from "next-auth"
 import { NextResponse } from "next/server"
 import { authOptions } from "@/lib/auth"
 import { analytics, fixturesOn } from "@/lib/fuel-db"
-import { DEFAULT_SETTINGS, SETTINGS_ID, validateSettings, withDefaults, type SettingsDoc } from "@/lib/fuel-settings"
+import { SETTINGS_ID, settingsPayload, validateSettings, type SettingsDoc } from "@/lib/fuel-settings"
 
 export async function GET() {
+  // อีเมลผู้แก้ล่าสุดให้เห็นเฉพาะคนที่ล็อกอิน (/api เปิดสาธารณะ)
+  const signedIn = Boolean((await getServerSession(authOptions))?.user?.email)
   try {
-    if (fixturesOn()) {
-      return NextResponse.json({ settings: DEFAULT_SETTINGS, updated_at: null, updated_by: null, fixtures: true })
-    }
+    if (fixturesOn()) return NextResponse.json({ ...settingsPayload(null, signedIn), fixtures: true })
     const doc = await (await analytics()).collection<SettingsDoc>("fuel_settings").findOne({ _id: SETTINGS_ID })
-    return NextResponse.json({ settings: withDefaults(doc), updated_at: doc?.updated_at ?? null, updated_by: doc?.updated_by ?? null })
+    return NextResponse.json(settingsPayload(doc, signedIn))
   } catch (err) {
     console.error("FUEL SETTINGS GET ERROR:", err)
     return NextResponse.json({ error: "โหลดการตั้งค่าไม่สำเร็จ" }, { status: 500 })
