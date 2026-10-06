@@ -260,7 +260,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 2: Overspeed pipeline (`overspeed`)
 
-Reads one day at a time from `terminus.driving_log` through the `วันที่`-first index `idx_date_plate_status_order_desc` (only the five fields the segments need), 50 plates per batch with a 0.5 s pause (the cluster is small). For every batch it deletes that day's `analytics.overspeed` rows of each plate it processed, then inserts the new segments — so a stricter re-run leaves no stale rows. `OVERSPEED_COLLECTION` redirects the writes for smoke tests and must be `overspeed` or `overspeed_*`. `JobLog` is created before the parameters are parsed, so a bad parameter is a failed run on the card.
+Reads one day at a time from `terminus.driving_log` through the `วันที่`-first index `idx_date_plate_status_order_desc` (only the five fields the segments need), 50 plates per batch with a 0.5 s pause (the cluster is small). ⚠️ `ความเร็ว(กม./ชม.)` and `ระยะทาง(กม.)` contain dots: in a projection, filter or sort Mongo reads a dotted name as a nested path and returns nothing, so the read is an aggregation that takes them with `$getField` (Mongo ≥ 5.0; the cluster runs 8.0), and a batch whose rows all lack speed fails instead of replacing the day. The test fake applies Mongo's dotted-path semantics so a plain projection would fail the tests. For every batch it deletes that day's `analytics.overspeed` rows of each plate it processed, then inserts the new segments — so a stricter re-run leaves no stale rows. `OVERSPEED_COLLECTION` redirects the writes for smoke tests and must be `overspeed` or `overspeed_*`. `JobLog` is created before the parameters are parsed, so a bad parameter is a failed run on the card.
 
 **Files:**
 - Create: `scripts/overspeed/pipeline_overspeed.py`
@@ -268,7 +268,7 @@ Reads one day at a time from `terminus.driving_log` through the `วันที
 
 **Interfaces:**
 - Consumes: Task 1 `PLATE`, `frame_from_rows`, `plate_segments`; `scripts/engineon/common.py` `MONGODB_URI`, `JobLog(job_type, pipeline, meta)`, `.finish(status, **extra)`, `log`, `yesterday_bkk()`; `scripts/fuel/dates.py` `ddmmyyyy(day)`, `parse_days(start, end)`; `scripts/fuel/plates.py` `terminus_plate(plate)`.
-- Produces: env `START_DATE`, `END_DATE` (dd/mm/YYYY), `PLATES`, `MIN_DURATION_MIN`, `MIN_RECORDS`, `GAP_MINUTES`, `OVERSPEED_COLLECTION`; `overspeed_day(driving_log, target, day, plates=None, gap_minutes=2, min_duration_min=2, min_records=5, batch_pause_s=0.5) -> {"day", "plates", "segments", "deleted"}`; `run_params(env, yesterday) -> dict`; JobLog `job_type` = `pipeline` = `"overspeed"`.
+- Produces: env `START_DATE`, `END_DATE` (dd/mm/YYYY), `PLATES`, `MIN_DURATION_MIN`, `MIN_RECORDS`, `GAP_MINUTES`, `OVERSPEED_COLLECTION`; `read_rows(driving_log, key, plates) -> list[dict]`; `overspeed_day(driving_log, target, day, plates=None, gap_minutes=2, min_duration_min=2, min_records=5, batch_pause_s=0.5) -> {"day", "plates", "segments", "deleted"}`; `run_params(env, yesterday) -> dict`; JobLog `job_type` = `pipeline` = `"overspeed"`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -284,22 +284,58 @@ from test_overspeed_segments import readings
 DAY = date(2026, 10, 5)
 
 
+MISSING = object()
+
+
+def mongo_path(doc, name):
+    """Mongo reads a projected name as a path: "a.b" means doc["a"]["b"] — so a name with dots in it
+    (ความเร็ว(กม./ชม.), ระยะทาง(กม.)) finds nothing."""
+    value = doc
+    for part in name.split("."):
+        if not isinstance(value, dict) or part not in value:
+            return MISSING
+        value = value[part]
+    return value
+
+
+def project(doc, spec):
+    out = {}
+    for name, how in spec.items():
+        if name == "_id":
+            continue
+        value = doc.get(how["$getField"], MISSING) if isinstance(how, dict) else mongo_path(doc, name)
+        if value is not MISSING:
+            out[name] = value
+    return out
+
+
 class FakeCursor(list):
     def hint(self, _index):
         return self
 
 
 class FakeDrivingLog:
+    """terminus.driving_log with Mongo's projection semantics for dotted names."""
+
     def __init__(self, rows):
-        self.rows, self.finds = rows, []
+        self.rows, self.matches, self.hints = rows, [], []
 
     def distinct(self, field, query):
         return [r[field] for r in self.rows if r["วันที่"] == query["วันที่"]] + [None, "  "]
 
-    def find(self, query, projection):
-        self.finds.append(query)
+    def _match(self, query):
         wanted = set(query["ทะเบียนพาหนะ"]["$in"])
-        return FakeCursor(r for r in self.rows if r["วันที่"] == query["วันที่"] and r["ทะเบียนพาหนะ"] in wanted)
+        return [r for r in self.rows if r["วันที่"] == query["วันที่"] and r["ทะเบียนพาหนะ"] in wanted]
+
+    def find(self, query, projection):
+        self.matches.append(query)
+        return FakeCursor(project(r, projection) for r in self._match(query))
+
+    def aggregate(self, pipeline, hint=None):
+        match, spec = pipeline[0]["$match"], pipeline[1]["$project"]
+        self.matches.append(match)
+        self.hints.append(hint)
+        return iter([project(r, spec) for r in self._match(match)])
 
 
 class DeleteResult:
@@ -329,10 +365,29 @@ def test_day_replaces_rows_for_every_processed_plate():
     assert [d["vehicle"] for d in target.inserts] == ["71-0001"]
 
 
+
+def test_speed_and_distance_are_read_despite_the_dots_in_their_names():
+    log = FakeDrivingLog(readings("71-0001", "08:00:00", [80] * 10))
+    target = FakeTarget()
+    overspeed_day(log, target, DAY, batch_pause_s=0)
+    assert target.inserts[0]["max_speed"] == 80
+    assert target.inserts[0]["sum_distance_km"] == pytest.approx(2.5)
+    assert log.hints == ["idx_date_plate_status_order_desc"]
+
+
+def test_rows_without_speed_fail_instead_of_wiping_the_day():
+    rows = [{k: v for k, v in r.items() if k != "ความเร็ว(กม./ชม.)"}
+            for r in readings("71-0001", "08:00:00", [80] * 10)]
+    target = FakeTarget()
+    with pytest.raises(RuntimeError, match="without speed"):
+        overspeed_day(FakeDrivingLog(rows), target, DAY, batch_pause_s=0)
+    assert target.deletes == [] and target.inserts == []
+
+
 def test_plates_filter_accepts_either_plate_form():
     log = FakeDrivingLog(readings("71-0001", "08:00:00", [80] * 10))
     overspeed_day(log, FakeTarget(), DAY, plates=["สบ.71-0001"], batch_pause_s=0)
-    assert log.finds[0]["ทะเบียนพาหนะ"] == {"$in": ["71-0001"]}
+    assert log.matches[0]["ทะเบียนพาหนะ"] == {"$in": ["71-0001"]}
 
 
 def test_day_without_rows_deletes_nothing():
@@ -392,7 +447,7 @@ MIN_DURATION_MIN (2), MIN_RECORDS (5), GAP_MINUTES (2). OVERSPEED_COLLECTION red
 (smoke tests only; must be "overspeed" or start with "overspeed_").
 
 Plates are read in batches of 50 through the วันที่-first index (only the five fields the segments
-need). For every batch the day's rows of each plate processed are deleted before the new segments are
+need; speed and distance through $getField because their names contain dots). For every batch the day's rows of each plate processed are deleted before the new segments are
 inserted — including plates that no longer have a segment, so a stricter re-run leaves no stale rows.
 """
 import os
@@ -410,11 +465,13 @@ from dates import ddmmyyyy, parse_days  # noqa: E402
 from plates import terminus_plate  # noqa: E402
 from pymongo import MongoClient  # noqa: E402
 
-from overspeed_segments import PLATE, frame_from_rows, plate_segments  # noqa: E402
+from overspeed_segments import DIST, PLATE, SPEED, frame_from_rows, plate_segments  # noqa: E402
 
 INDEX = "idx_date_plate_status_order_desc"
 BATCH = 50
-FIELDS = {"_id": 0, PLATE: 1, "วันที่": 1, "เวลา": 1, "ความเร็ว(กม./ชม.)": 1, "ระยะทาง(กม.)": 1}
+# "ความเร็ว(กม./ชม.)" and "ระยะทาง(กม.)" contain dots: in a projection, filter or sort Mongo reads a dotted
+# name as a nested path and returns nothing, so they are read literally with $getField (Mongo >= 5.0).
+PROJECT = {"_id": 0, PLATE: 1, "วันที่": 1, "เวลา": 1, "speed": {"$getField": SPEED}, "dist": {"$getField": DIST}}
 TARGET_RE = re.compile(r"^overspeed(_[a-z0-9_]+)?$")
 RUN_ENV = ("START_DATE", "END_DATE", "PLATES", "MIN_DURATION_MIN", "MIN_RECORDS", "GAP_MINUTES", "OVERSPEED_COLLECTION")
 
@@ -422,6 +479,16 @@ RUN_ENV = ("START_DATE", "END_DATE", "PLATES", "MIN_DURATION_MIN", "MIN_RECORDS"
 def day_plates(values) -> list[str]:
     """Distinct driving_log plates for a day without vendor nulls/blanks, sorted (values kept as stored)."""
     return sorted({v for v in values if isinstance(v, str) and v.strip()})
+
+
+def read_rows(driving_log, key: str, plates: list[str]) -> list[dict]:
+    """One day's driving_log rows of `plates`, only the fields the segments need, through the วันที่-first index."""
+    rows = []
+    for doc in driving_log.aggregate([{"$match": {"วันที่": key, PLATE: {"$in": plates}}}, {"$project": PROJECT}],
+                                     hint=INDEX):
+        doc[SPEED], doc[DIST] = doc.pop("speed", None), doc.pop("dist", None)
+        rows.append(doc)
+    return rows
 
 
 def overspeed_day(driving_log, target, day: date, plates: list[str] | None = None, gap_minutes: float = 2,
@@ -436,8 +503,10 @@ def overspeed_day(driving_log, target, day: date, plates: list[str] | None = Non
     stats = {"day": day.isoformat(), "plates": 0, "segments": 0, "deleted": 0}
     for i in range(0, len(raw), BATCH):
         part = raw[i:i + BATCH]
-        rows = list(driving_log.find({"วันที่": key, PLATE: {"$in": part}}, FIELDS).hint(INDEX))
-        df = frame_from_rows(rows)
+        df = frame_from_rows(read_rows(driving_log, key, part))
+        if not df.empty and df[SPEED].isna().all():
+            # never replace a day's rows from readings that lost their speed (e.g. a projection mistake)
+            raise RuntimeError(f"{key}: driving_log rows came back without speed — overspeed rows left as they were")
         processed = sorted(df[PLATE].unique()) if not df.empty else []
         segments = []
         for _, g in df.groupby(PLATE):
@@ -508,7 +577,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest scripts/overspeed -q -p no:cacheprovider`
-Expected: `11 passed`
+Expected: `13 passed`
 
 - [ ] **Step 5: Commit**
 
@@ -1578,7 +1647,7 @@ Expected: `KeyError: 'overspeed'` and the schedule assertion fails (2 failed, 1 
 - [ ] **Step 4: Run the test, then the whole suite**
 
 Run: `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest tests/test_pipeline_registry.py -q -p no:cacheprovider` → `3 passed`
-Run: `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider` → all pass (697 at the time of writing)
+Run: `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider` → all pass (699 at the time of writing)
 Run: `.venv/bin/python -m py_compile main.py routes/pipeline/pipeline_routes.py && git status --short` → only this task's files; restore any `.pyc` listed.
 
 - [ ] **Step 5: Commit**
