@@ -350,3 +350,87 @@ Deploys: api-ncac `main` → Render auto-deploy; fuel-control-center `main` → 
 | Calibration quality per Besttech truck | 200 L default, flagged |
 | Besttech `/location` (POIs) works with our key | plants from `atms.plants` only |
 | Terminus data for yesterday is complete by 04:15 | wait-and-retry rule in §6 |
+
+---
+
+## 10. Part 4 — Jobs tab (งานประจำ)
+
+Added 2026-10-06. User decisions: all three `~/Documents/project/schedule_fuel` jobs move into api-ncac; engine_on_v2 becomes an **optional parameter** of the existing `engineon` pipeline (the nightly keeps today's logic); cron times are **fixed in code** and shown read-only.
+
+### 10.1 Why
+
+| Job today | How it runs | Problem |
+|---|---|---|
+| `cal_overspeed/etl_overspeed_v4.py` | edit the dates at the top, run by hand | no schedule; ⚠️ a Mongo username + password typed into the file |
+| `Cpac_compen/compensation_cpac/rmc_daily/rmc_daily.py` | launchd `com.cpac.rmc-daily` on this Mac, 09:00 | stops when the Mac is off; state in a local `state.json`; the 2026-09-28 bug silently pushed 0 rows on 32 days |
+| `engine_on_v2/process_engineon.py` | by hand | an unmerged variant of the nightly `engineon` pipeline writing the same collections |
+
+Goal: one tab where the fuel team runs any of these with parameters, sees when each runs automatically, and sees how its last runs went — without editing code or keeping a Mac awake.
+
+### 10.2 Jobs
+
+| Card | Pipeline type | Script (api-ncac) | Auto BKK (UTC) | Parameters (default) | Writes | Env on Render |
+|---|---|---|---|---|---|---|
+| Overspeed | `overspeed` (new) | `scripts/overspeed/pipeline_overspeed.py` | 04:30 (21:30) | `START_DATE`/`END_DATE` dd/mm/YYYY (yesterday) · `PLATES` comma list (all) · `MIN_DURATION_MIN` (2) · `MIN_RECORDS` (5) · `GAP_MINUTES` (2) | `analytics.overspeed`, delete + insert per plate × day | `MONGODB_URI` (exists) |
+| CPAC RMC compensation | `rmc_compensation` (new) | `scripts/rmc/pipeline_rmc.py` | 09:00 (02:00) | `DATE` yyyy-mm-dd, or `START` + `END` (inclusive) · `DRY_RUN` (false) · none = catch up from the last good day, ≤ 14 days per run | pushes to `API_PUSH` (upsert); state in `analytics.etl_state` | `POST_URL`, `API_PUSH` (secrets — `POST_URL` may carry a token) |
+| Engine-on | `engineon` (existing) | `scripts/engineon/pipeline_engineon.py` | 04:00 (21:00), unchanged | `START_DATE`/`END_DATE` (yesterday) · `MAX_DISTANCE` (200) · **`ENGINE_LOGIC` `current`/`v2` (`current`)** | `raw_engineon` + `summary_engineon` | — |
+| Fuel series *(small addition)* | `fuel_series_besttech`, `fuel_series_terminus`, `fuel_nightly`, `fuel_tanks` (Part 1) | existing | 01:30 / in chain / 04:15 / manual | `START_DATE`/`END_DATE`, `FORCE`; `PLATES` for Terminus | `gps_series`, `fuel_tanks` | `BESTTECH_API` |
+
+The fuel-series cards close the Part 1 review gap (FCC could not trigger those jobs) and are what §6 means by "re-run from the Jobs tab".
+
+**Overspeed port**
+- Same segment logic and output fields as `etl_overspeed_v4.py` (speed groups `>70` and `60-70`, gap / minimum duration / minimum records), so `/overspeed` is unchanged.
+- Reads only the fields it needs through the `วันที่`-first index; today's script loads whole documents.
+- Re-runs delete the day's rows for every plate processed, even one that now has no segment (today a stricter re-run leaves stale rows behind).
+- ⚠️ **Security:** the password in the current script is not carried over — the job uses `MONGODB_URI`. Rotate that password: api-ncac is a **public** GitHub repo, so the old file must never be copied into it.
+- Kept as-is and noted: Terminus `ระยะทาง(กม.)` is always 0, so `sum_distance_km` is 0 and `w_speed` empty; overspeed covers Terminus trucks only. Both are follow-ups (distance from coordinates; Besttech via `gps_series`).
+
+**RMC port**
+- Same fetch → tier → push logic and the same tiers (91–119 / 120–150 / > 150 min; ML 1/2/3, MS 0.5/1/1.5), including the 2026-09-28 fix for numeric truck codes read as `6496.0`.
+- State: `analytics.etl_state` doc `{_id: "rmc_compensation", last_success_date, updated_at}`, seeded from the Mac's `state.json` at cutover. Default runs process each missed day through yesterday, one day at a time, advancing the state only after that day's push succeeds. `DATE` / `START`–`END` / `DRY_RUN` never touch the state — as today.
+- **New guard:** a day that fetched trips but sends 0 rows after the vehicle mapping fails and does not advance the state (the 32 lost days would have shown up as failures).
+- Vehicle mapping (`vehicle.json`, 591 rows incl. driver names) moves to **Mongo** `analytics.rmc_vehicles`, loaded once at cutover — not into the repo, because api-ncac is public and the file holds personal data; it can also be updated without a deploy.
+- Logs go to `etl_jobs` (per-day rows fetched / sent / created / updated) instead of local log files.
+- Cutover: the Render job runs alongside the Mac's launchd for 3 days (pushes are upserts, so a day pushed twice is updated, not duplicated); compare counts; then `launchctl unload` `com.cpac.rmc-daily` and archive the folder. The 32 zero-row days (07-29 → 09-27) become a one-click `START`–`END` run, done only when the user asks.
+
+**Engine-on logic parameter**
+- `ENGINE_LOGIC=v2`: boxes with v1-type voltage count every parked (`จอดรถ`) reading as engine-on; v2 boxes keep the ≥ 25 V rule; every record carries `confirmed_by_voltage` (true for v2 boxes). `current` (default) is today's nightly logic, unchanged.
+- A v2 run overwrites `raw_engineon` / `summary_engineon` for its dates. `/engineon` reads `engineon_trip_summary`, so the card offers "rebuild trip summary for these months" (on by default), which queues `engineon_trip_summary` (`YEAR`/`MONTH`) after the engine-on run.
+- Named `ENGINE_LOGIC`, not `VERSION_TYPE`, because the trip summary already uses `VERSION_TYPE` as a filter.
+
+**Schedule check against `main.py` (UTC)**
+
+| New job | Neighbours | Why it is safe |
+|---|---|---|
+| overspeed 21:30 | engineon 21:00 (~1 min), fuel_nightly 21:15 (~1–2 min, may sleep while waiting for Terminus), atms_stockmovement 22:00 (heavy writes) | reads the same day engine-on has just read, through the index; a few minutes of work, done before 22:00 |
+| rmc 02:00 | `ld` 02:00, finance overdue reminder 09:00 BKK | RMC only talks to CPAC fleetlink and the push API and writes one state doc — no shared system with `ld`, light load |
+
+### 10.3 The tab
+
+- `/pipeline` gets two tabs: **ETL** (today's view, unchanged) and **งานประจำ**.
+- One card per job: name and a one-line Thai description; the schedule read-only ("อัตโนมัติทุกวัน 04:30"); the last 5 runs from `etl_jobs` (status, start, duration, records, error on hover); the parameter form; **Run**. Runs go through the page's existing single-runner queue and polling; forms reuse `BaseRunModal`.
+- Validation before sending: end ≥ start; at most 7 days per run for jobs that read `driving_log` (≈ 519k rows per day — split longer ranges), 3 days for `fuel_series_besttech` (≈ 76 min per day), 14 for RMC; `DATE` or `START`+`END`, not both; numbers are positive integers.
+- **Run** needs a signed-in session: `POST /api/pipeline/[type]` checks next-auth (this also covers the ETL tab's buttons). Reading status stays as today.
+- Mobile: cards stack; the form opens full-screen.
+
+### 10.4 API changes
+
+- api-ncac: register `overspeed` and `rmc_compensation` (`PIPELINE_SCRIPTS` / `PIPELINE_NAMES` / `RUN_LOG_LOCATION` → `analytics.etl_jobs`, `JobLog`); `engineon` reads `ENGINE_LOGIC`; cron in `main.py`: overspeed `CronTrigger(hour=21, minute=30)`, rmc `CronTrigger(hour=2, minute=0)`.
+- FCC proxy `src/app/api/pipeline/[type]/route.ts`: `TYPE_MAP` gains `overspeed`, `rmc-compensation`, `fuel-series-besttech`, `fuel-series-terminus`, `fuel-nightly`, `fuel-tanks`; each type gets an allow-list of parameter keys (unknown keys dropped, on top of `STRIP_KEYS`); POST requires a session.
+- Last runs per card: the existing `/api/etl_jobs` gains `job_type` and `limit` filters.
+
+### 10.5 Tests
+
+- api-ncac (pytest): overspeed segment builder on fixture rows (both speed groups, gap split, minimum duration / records, zero-distance weighted speed) and the stale-row delete on re-run; RMC tiers at the boundaries, the `.0` code regression, the 0-rows-sent guard, state advancing only on success, `DATE` / `START`–`END` / `DRY_RUN` not touching state, the 14-day cap; engine-on classification for v1/v2 boxes under both `ENGINE_LOGIC` values and `confirmed_by_voltage`.
+- FCC (`npm test`): per-job parameter validation and payload builders.
+- Smoke, each only with the user's go-ahead: overspeed for yesterday (row counts vs. the script's last run of that day); RMC `DRY_RUN` for yesterday, then a real run; engine-on v2 for one day, then the trip-summary rebuild.
+
+### 10.6 Rollout
+
+1. api-ncac branch (from `main` once Part 1 has landed): overspeed + rmc + `ENGINE_LOGIC` + registry and cron.
+2. FCC: the tab and proxy changes (separate commit set; can ride with Part 3).
+3. Deploy only after approval: add `POST_URL` / `API_PUSH` on Render; seed `etl_state` and `rmc_vehicles`; 3-day RMC parallel run, then retire launchd; stop running the local overspeed script.
+
+### 10.7 Out of scope
+
+Editing schedules from the UI; overspeed for Besttech trucks; computing distance from coordinates; the 32-day RMC re-push until asked; the old `rmc_compensation.py` / `ext_data.py` scripts (superseded by `rmc_daily`); deleting `schedule_fuel` (archive after cutover).
