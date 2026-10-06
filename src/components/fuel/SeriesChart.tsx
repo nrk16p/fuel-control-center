@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic"
 import { useMemo } from "react"
 import type { OverlayBand, OverlayMarker, OverlayRefuel } from "@/components/fueldetection/graph/fuelOverlayPlugin"
+import { eventTone } from "@/lib/fuel-classes"
 import { levelAt, type SourceSeries } from "@/lib/fuel-series"
 import type { FuelEvent } from "@/lib/fuel-types"
 
@@ -23,7 +24,6 @@ type Props = {
   subtitle?: string
 }
 
-const LOSS_CLASSES = new Set<string>(["suspected_loss", "gap_loss"])
 
 /** เส้น gps_series หนึ่งแหล่ง + แถบ/หมุดของเหตุการณ์ บน FuelChart เดิม */
 export function SeriesChart({ series, events, selectedId = null, height = 360, title, subtitle }: Props) {
@@ -39,8 +39,7 @@ export function SeriesChart({ series, events, selectedId = null, height = 360, t
         refuels.push({ ts: endTs, fuel, amount: e.litres })
         return
       }
-      const cleared = e.decision === "noise" || e.decision === "legit" || !LOSS_CLASSES.has(e.class)
-      const tone = cleared ? ("muted" as const) : ("clay" as const)
+      const tone = eventTone(e)
       const selected = e._id === selectedId
       bands.push({ startTs, endTs, tone, strength: selected ? 0.18 : 0.08 })
       markers.push({ n: i + 1, ts: (startTs + endTs) / 2, fuel, tone, selected })

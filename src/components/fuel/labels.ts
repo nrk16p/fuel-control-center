@@ -1,5 +1,8 @@
 import type { StatusFilter } from "@/lib/fuel-events"
-import type { CoverageStatus, Decision, EventClass, Source } from "@/lib/fuel-types"
+import type { Tone } from "@/lib/fuel-classes"
+import type { CoverageStatus, Decision, Source } from "@/lib/fuel-types"
+
+export { CLASS_LABEL, CLASS_TONE, classLabel, classTone, type Tone } from "@/lib/fuel-classes"
 
 export const DECISION_LABEL: Record<Decision, string> = {
   real_loss: "ดูดจริง",
@@ -15,24 +18,6 @@ export const DECISION_HINT: Record<Decision, string> = {
   follow_up: "ยังสรุปไม่ได้ ต้องตามต่อ",
 }
 
-export const CLASS_LABEL: Record<EventClass, string> = {
-  suspected_loss: "น่าจะดูดน้ำมันจริง",
-  gap_loss: "น้ำมันหายช่วงสัญญาณขาด",
-  noise: "สัญญาณรบกวน",
-  consumption: "ใช้ตามปกติ",
-  refuel: "เติมน้ำมัน",
-  sensor_fault: "เซนเซอร์ผิดปกติ",
-}
-
-export type Tone = "clay" | "butter" | "muted" | "forest"
-export const CLASS_TONE: Record<EventClass, Tone> = {
-  suspected_loss: "clay",
-  gap_loss: "clay",
-  sensor_fault: "butter",
-  noise: "muted",
-  consumption: "muted",
-  refuel: "forest",
-}
 export const TONE_CLASS: Record<Tone, string> = {
   clay: "bg-clay/10 text-clay",
   butter: "bg-butter/40 text-ink",

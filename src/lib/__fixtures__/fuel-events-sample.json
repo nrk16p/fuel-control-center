@@ -69,5 +69,18 @@
     "action": null,
     "place": null,
     "status": "auto_closed", "decision": null, "review_id": null, "scorer": "rules-v1", "stale": false
+  },
+  {
+    "_id": "สบ.71-5208|2026-10-05T09:30", "plate": "สบ.71-5208", "truck_code": "ME201", "driver": null,
+    "fleet": "Asia", "branch": "สระบุรี", "plant": "ท่าลาน", "date_key": "2026-10-05",
+    "start": "2026-10-05T02:30:00.000Z", "end": "2026-10-05T03:10:00.000Z",
+    "sources": ["besttech"], "kind": "drop", "class": "place_drop",
+    "litres": 45, "pct_tank": 22.5, "score": 30, "p_real_loss": 0.2,
+    "suggestion": "noise", "confidence": 0.8,
+    "reasons": ["ระดับลดลงแล้วค้างระหว่างจอดที่แพลนท์ 40 นาที", "จุดนี้พบการลดแบบเดียวกันบ่อย"],
+    "action": "เทียบใบเติม/ใบเบิกน้ำมันของแพลนท์ ถ้าตรงกันปิดเป็นสัญญาณรบกวน",
+    "features": { "level_before": 160, "level_after": 115, "duration_min": 40, "engine_off_share": 0.9, "at_place": true },
+    "place": { "name": "แพลนท์ท่าลาน", "lat": 14.53, "lng": 100.91 },
+    "status": "open", "decision": null, "review_id": null, "scorer": "rules-v1", "stale": false
   }
 ]

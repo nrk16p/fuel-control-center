@@ -1,7 +1,7 @@
 import { summaryWithDefaults } from "@/lib/fuel-events"
 import type { DailySummary, FuelEvent } from "@/lib/fuel-types"
 import { fmtDateKey, fmtThaiTime } from "@/lib/thai-time"
-import { CLASS_LABEL, SOURCE_LABEL } from "./labels"
+import { SOURCE_LABEL, classLabel } from "./labels"
 
 type Props = {
   date: string | null
@@ -61,7 +61,7 @@ export function MorningCard({ date, summary: raw, checkFirst, loading, onOpen }:
                   onClick={() => onOpen(e._id)}
                   className="text-left text-[14px] text-forest underline-offset-2 hover:underline"
                 >
-                  {e.plate} · {e.litres.toFixed(0)} L · {CLASS_LABEL[e.class]} · {fmtThaiTime(Date.parse(e.start))}
+                  {e.plate} · {e.litres.toFixed(0)} L · {classLabel(e.class)} · {fmtThaiTime(Date.parse(e.start))}
                 </button>
               </li>
             ))}

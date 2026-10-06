@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import type { CoverageVerdict, LastSeen, SourceSeries } from "@/lib/fuel-series"
 import type { CoverageRow, FuelEvent, Source } from "@/lib/fuel-types"
 import { fmtThaiDateTime } from "@/lib/thai-time"
-import { CLASS_LABEL, DECISION_LABEL, SOURCE_LABEL } from "./labels"
+import { DECISION_LABEL, SOURCE_LABEL, classLabel } from "./labels"
 import { NoDataBanner } from "./NoDataBanner"
 import { SeriesChart } from "./SeriesChart"
 import { useJson } from "./useJson"
@@ -122,7 +122,7 @@ export function TruckTab() {
                 {data.data.events.map((e) => (
                   <li key={e._id}>
                     <button type="button" onClick={() => openInQueue(e)} className="text-left text-[13px] text-forest underline-offset-2 hover:underline">
-                      {fmtThaiDateTime(Date.parse(e.start))} · {CLASS_LABEL[e.class]} · {e.litres.toFixed(1)} L
+                      {fmtThaiDateTime(Date.parse(e.start))} · {classLabel(e.class)} · {e.litres.toFixed(1)} L
                       {e.decision ? ` · ${DECISION_LABEL[e.decision]}` : " · รอตรวจ"}
                     </button>
                   </li>

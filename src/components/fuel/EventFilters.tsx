@@ -1,8 +1,8 @@
 "use client"
 
-import { EVENT_CLASSES, SOURCES, STATUS_FILTERS, type StatusFilter } from "@/lib/fuel-events"
+import { EVENT_CLASSES, SOURCES, STATUS_FILTERS, isDefaultQueue, type StatusFilter } from "@/lib/fuel-events"
 import type { EventClass, Source } from "@/lib/fuel-types"
-import { CLASS_LABEL, SOURCE_LABEL, STATUS_FILTER_LABEL } from "./labels"
+import { SOURCE_LABEL, STATUS_FILTER_LABEL, classLabel } from "./labels"
 
 export type QueueFilters = {
   from: string
@@ -22,6 +22,8 @@ type Props = { value: QueueFilters; onChange: (next: QueueFilters) => void }
 
 export function EventFilters({ value, onChange }: Props) {
   const set = <K extends keyof QueueFilters>(key: K, next: QueueFilters[K]) => onChange({ ...value, [key]: next })
+  // ชิป: ลดที่แพลนท์/จุดจอด ไม่ขึ้นในคิวปกติ — กดเพื่อดูเฉพาะประเภทนี้
+  const placeDrops = value.cls === "place_drop"
   // ช่องข้อความใช้ค่าตอนออกจากช่อง/กด Enter — ไม่ยิง API ทุกตัวอักษร
   const textProps = (key: "branch" | "fleet" | "plant") => ({
     defaultValue: value[key],
@@ -56,14 +58,22 @@ export function EventFilters({ value, onChange }: Props) {
       <label className={label}>
         ประเภท
         <select value={value.cls} onChange={(e) => set("cls", e.target.value as EventClass | "")} className={field}>
-          <option value="">ทุกประเภท</option>
+          <option value="">{isDefaultQueue(value) ? "ทุกประเภท (ยกเว้นที่แพลนท์/จุดจอด)" : "ทุกประเภท"}</option>
           {EVENT_CLASSES.map((c) => (
             <option key={c} value={c}>
-              {CLASS_LABEL[c]}
+              {classLabel(c)}
             </option>
           ))}
         </select>
       </label>
+      <button
+        type="button"
+        aria-pressed={placeDrops}
+        onClick={() => set("cls", placeDrops ? "" : "place_drop")}
+        className={`h-9 rounded-full border px-3 text-[13px] ${placeDrops ? "border-forest bg-mint font-semibold text-forest" : "border-line-input bg-surface text-ink"}`}
+      >
+        ที่แพลนท์/จุดจอด
+      </button>
       <label className={label}>
         แหล่ง GPS
         <select value={value.source} onChange={(e) => set("source", e.target.value as Source | "")} className={field}>

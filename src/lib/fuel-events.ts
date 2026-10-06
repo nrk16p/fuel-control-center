@@ -17,7 +17,11 @@ const STATUS_GROUPS: Record<StatusFilter, EventStatus[] | null> = {
 }
 /** ตัวกรองที่ต้องดูคำตัดสินด้วย — "ติดตาม" = ตัดสินแล้วว่าให้ตามต่อ (ไม่งั้นจมอยู่ในตัดสินแล้ว) */
 const STATUS_DECISION: Partial<Record<StatusFilter, string>> = { follow_up: "follow_up" }
-export const EVENT_CLASSES: readonly EventClass[] = ["suspected_loss", "gap_loss", "noise", "consumption", "refuel", "sensor_fault"]
+export const EVENT_CLASSES: readonly EventClass[] = [
+  "suspected_loss", "gap_loss", "place_drop", "noise", "consumption", "refuel", "sensor_fault",
+]
+/** ไม่ขึ้นในคิวรอตรวจปกติ — ลดที่แพลนท์/จุดจอด (Part 2 แนะนำเป็นสัญญาณรบกวน) ดูได้จากชิป/ตัวกรองประเภทของมันเอง */
+export const QUEUE_HIDDEN_CLASSES: readonly EventClass[] = ["place_drop"]
 export const SOURCES: readonly Source[] = ["besttech", "terminus"]
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 export const MAX_RANGE_DAYS = 31
@@ -82,6 +86,9 @@ export function parseEventFilter(params: URLSearchParams, defaultDay: string): P
   }
 }
 
+/** คิวปกติ = รอตรวจ และไม่ได้เลือกประเภท → ซ่อน QUEUE_HIDDEN_CLASSES */
+export const isDefaultQueue = (filter: { status: StatusFilter; cls: EventClass | "" | null }) => filter.status === "waiting" && !filter.cls
+
 export function buildEventsQuery(filter: EventFilter): Record<string, unknown> {
   const query: Record<string, unknown> = { date_key: { $gte: filter.from, $lte: filter.to } }
   const statuses = STATUS_GROUPS[filter.status]
@@ -89,6 +96,7 @@ export function buildEventsQuery(filter: EventFilter): Record<string, unknown> {
   const decision = STATUS_DECISION[filter.status]
   if (decision) query.decision = decision
   if (filter.cls) query.class = filter.cls
+  else if (isDefaultQueue(filter)) query.class = { $nin: QUEUE_HIDDEN_CLASSES }
   if (filter.source) query.sources = filter.source
   if (filter.branch) query.branch = filter.branch
   if (filter.fleet) query.fleet = filter.fleet
@@ -108,7 +116,7 @@ export function matchesFilter(
     e.date_key <= filter.to &&
     (!statuses || statuses.includes(e.status)) &&
     (!decision || e.decision === decision) &&
-    (!filter.cls || e.class === filter.cls) &&
+    (filter.cls ? e.class === filter.cls : !(isDefaultQueue(filter) && QUEUE_HIDDEN_CLASSES.includes(e.class))) &&
     (!filter.source || e.sources.includes(filter.source)) &&
     (!filter.branch || e.branch === filter.branch) &&
     (!filter.fleet || e.fleet === filter.fleet) &&

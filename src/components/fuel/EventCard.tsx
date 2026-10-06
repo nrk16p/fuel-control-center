@@ -1,6 +1,6 @@
 import type { FuelEvent } from "@/lib/fuel-types"
 import { fmtThaiDateTime } from "@/lib/thai-time"
-import { CLASS_LABEL, CLASS_TONE, DECISION_LABEL, TONE_CLASS } from "./labels"
+import { DECISION_LABEL, TONE_CLASS, classLabel, classTone } from "./labels"
 
 type Props = { event: FuelEvent; selected: boolean; onSelect: () => void }
 
@@ -16,7 +16,7 @@ export function EventCard({ event, selected, onSelect }: Props) {
     >
       <div className="flex items-center justify-between gap-2">
         <span className="font-semibold text-ink">{event.plate}</span>
-        <span className={`rounded-full px-2 py-0.5 text-[12px] ${TONE_CLASS[CLASS_TONE[event.class]]}`}>{CLASS_LABEL[event.class]}</span>
+        <span className={`rounded-full px-2 py-0.5 text-[12px] ${TONE_CLASS[classTone(event.class)]}`}>{classLabel(event.class)}</span>
       </div>
       <div className="mt-1 flex flex-wrap gap-x-3 text-[13px] text-body">
         <span className="font-medium">{event.litres.toFixed(1)} L</span>

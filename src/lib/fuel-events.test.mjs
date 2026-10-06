@@ -4,7 +4,7 @@ import { test } from "node:test"
 
 import {
   MAX_LIMIT, buildEventsPipeline, buildEventsQuery, eventPath, eventsUrl, evidenceRows, listCaption, matchesFilter, neighbourId,
-  nextLimit, nextWaitingId, parseEventFilter, rankEvents, rankKey, summaryWithDefaults,
+  isDefaultQueue, nextLimit, nextWaitingId, parseEventFilter, rankEvents, rankKey, summaryWithDefaults,
 } from "./fuel-events.ts"
 
 const events = JSON.parse(readFileSync(new URL("./__fixtures__/fuel-events-sample.json", import.meta.url), "utf8"))
@@ -18,7 +18,7 @@ test("defaults to yesterday's waiting events", () => {
     branch: null, fleet: null, plant: null, limit: 100,
   })
   assert.deepEqual(buildEventsQuery(r.value), {
-    date_key: { $gte: "2026-10-05", $lte: "2026-10-05" }, status: { $in: ["open", "audit"] },
+    date_key: { $gte: "2026-10-05", $lte: "2026-10-05" }, status: { $in: ["open", "audit"] }, class: { $nin: ["place_drop"] },
   })
 })
 
@@ -41,7 +41,7 @@ test("rejects bad input", () => {
 test("fixture filtering matches the Mongo query semantics", () => {
   const plates = (qs) => events.filter((e) => matchesFilter(e, parse(qs).value)).map((e) => e.plate)
   assert.deepEqual(plates(""), ["สบ.71-8635", "สบ.70-6303", "สบ.72-8334"])
-  assert.equal(plates("from=2026-10-04&to=2026-10-05&status=all").length, 6)
+  assert.equal(plates("from=2026-10-04&to=2026-10-05&status=all").length, 7)
   assert.deepEqual(plates("status=all&class=noise"), ["สบ.72-8334", "สบ.72-9520"])
   assert.deepEqual(plates("status=all&source=terminus"), ["สบ.71-8635", "สบ.72-9520"])
   assert.deepEqual(plates("status=decided&from=2026-10-04"), ["สบ.71-8622"])
@@ -49,7 +49,7 @@ test("fixture filtering matches the Mongo query semantics", () => {
 
 test("ranks by likely litres lost, then by start time", () => {
   assert.deepEqual(rankEvents(events).map((e) => e.plate),
-    ["สบ.71-8622", "สบ.71-8635", "สบ.70-6303", "สบ.72-8334", "สบ.72-9520", "สบ.71-7463"])
+    ["สบ.71-8622", "สบ.71-8635", "สบ.70-6303", "สบ.71-5208", "สบ.72-8334", "สบ.72-9520", "สบ.71-7463"])
   assert.equal(Math.round(rankKey(events[0]) * 100) / 100, 28.19)
   const tie = rankEvents([
     { id: "b", p_real_loss: 0, litres: 0, start: "2026-10-05T03:00:00Z" },
@@ -170,4 +170,15 @@ test("a partial nightly summary still renders: missing numbers are 0, missing li
   assert.deepEqual(odd.by_status, {})
   assert.deepEqual(odd.sources_missing, [])
   assert.equal(odd.likely_litres, 0)
+})
+
+test("place drops stay out of the default queue and have their own chip", () => {
+  const plates = (qs) => events.filter((e) => matchesFilter(e, parse(qs).value)).map((e) => e.plate)
+  assert.equal(isDefaultQueue(parse("").value), true)
+  assert.equal(plates("").includes("สบ.71-5208"), false)
+  assert.deepEqual(plates("class=place_drop"), ["สบ.71-5208"])
+  assert.equal(isDefaultQueue(parse("class=place_drop").value), false)
+  assert.deepEqual(buildEventsQuery(parse("class=place_drop").value).class, "place_drop")
+  assert.equal(plates("status=all").includes("สบ.71-5208"), true)
+  assert.equal(buildEventsQuery(parse("status=all").value).class, undefined)
 })

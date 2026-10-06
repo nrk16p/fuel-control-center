@@ -7,7 +7,7 @@ import { pointNear, type SourceSeries } from "@/lib/fuel-series"
 import type { FuelEvent, Source } from "@/lib/fuel-types"
 import { fmtDateKey, fmtThaiDateTime, fmtThaiTime } from "@/lib/thai-time"
 import { EventMapLoader } from "./EventMapLoader"
-import { CLASS_LABEL, DECISION_LABEL, SOURCE_LABEL } from "./labels"
+import { DECISION_LABEL, SOURCE_LABEL, classLabel } from "./labels"
 import { SeriesChart } from "./SeriesChart"
 import { useJson } from "./useJson"
 
@@ -64,7 +64,7 @@ export function EventPanel({ eventId, onClose, children }: Props) {
   const code = event.truck_code && event.truck_code !== event.plate ? ` (${event.truck_code})` : ""
 
   return (
-    <PanelShell title={`${event.plate}${code} · ${CLASS_LABEL[event.class]}`} onClose={onClose}>
+    <PanelShell title={`${event.plate}${code} · ${classLabel(event.class)}`} onClose={onClose}>
       <p className="text-[14px] text-body">
         {fmtThaiDateTime(startMs)} – {fmtThaiTime(Date.parse(event.end))} · {event.litres.toFixed(1)} L
         {event.driver ? ` · คนขับ ${event.driver}` : " · ไม่ทราบคนขับ"} · จาก {event.sources.map((s) => SOURCE_LABEL[s]).join(" + ")}
@@ -129,7 +129,7 @@ export function EventPanel({ eventId, onClose, children }: Props) {
           <ul className="mt-1 space-y-1 text-[13px] text-body">
             {history.map((h) => (
               <li key={h._id}>
-                {fmtDateKey(h.date_key)} {fmtThaiTime(Date.parse(h.start))} · {CLASS_LABEL[h.class]} · {h.litres.toFixed(1)} L
+                {fmtDateKey(h.date_key)} {fmtThaiTime(Date.parse(h.start))} · {classLabel(h.class)} · {h.litres.toFixed(1)} L
                 {h.decision ? ` · ${DECISION_LABEL[h.decision]}` : ""}
               </li>
             ))}

@@ -3,7 +3,7 @@
 
 export type Source = "besttech" | "terminus"
 export type EventKind = "drop" | "refuel" | "gap"
-export type EventClass = "noise" | "consumption" | "refuel" | "sensor_fault" | "suspected_loss" | "gap_loss"
+export type EventClass = "noise" | "consumption" | "refuel" | "sensor_fault" | "suspected_loss" | "gap_loss" | "place_drop"
 export type EventStatus = "open" | "auto_closed" | "audit" | "decided"
 export type Suggestion = "real_loss" | "noise" | "legit"
 export type Decision = Suggestion | "follow_up"
