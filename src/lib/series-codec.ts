@@ -52,7 +52,14 @@ function toBytes(value: BinaryLike): Uint8Array {
   return value.buffer.subarray(0, value.position ?? value.buffer.length)
 }
 
-export function decodeColumns(cols: Record<string, BinaryLike>, n: number): SeriesColumns {
+/** Columns of a document with no readings (gps_series docs with n === 0 carry no `cols`). */
+function emptyColumns(): SeriesColumns {
+  return { m: [], fuel: [], fuelLo: [], fuelHi: [], speed: [], engine: [], lat: [], lng: [] }
+}
+
+export function decodeColumns(cols: Record<string, BinaryLike> | undefined, n: number): SeriesColumns {
+  if (n === 0) return emptyColumns()
+  if (!cols) throw new Error("gps_series columns are missing")
   const out = {} as SeriesColumns
   for (const [key, field, kind] of COLUMNS) {
     const raw = cols[field]

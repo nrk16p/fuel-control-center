@@ -28,8 +28,14 @@ test("reads Binary-like values with a byte offset", () => {
 
 test("rejects short or missing columns", () => {
   assert.throws(() => decodeColumns({ ...fixture.cols, m: new Uint8Array(2) }, 3), /column m/)
-  const { lng, ...rest } = fixture.cols
-  assert.throws(() => decodeColumns(rest, 3), /lng is missing/)
+  const withoutLng = Object.fromEntries(Object.entries(fixture.cols).filter(([key]) => key !== "lng"))
+  assert.throws(() => decodeColumns(withoutLng, 3), /lng is missing/)
+})
+
+test("returns empty columns for documents without readings (n = 0, no cols)", () => {
+  assert.deepEqual(decodeColumns(undefined, 0), {
+    m: [], fuel: [], fuelLo: [], fuelHi: [], speed: [], engine: [], lat: [], lng: [],
+  })
 })
 
 test("converts fuel and degrees", () => {
