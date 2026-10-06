@@ -1,0 +1,14 @@
+{
+  "_id": "2026-10-05",
+  "trucks_expected": 560,
+  "trucks_analysed": 537,
+  "by_status": { "ok": 512, "stuck": 11, "no_sensor": 14, "offline": 6, "no_data": 17 },
+  "events": 37,
+  "auto_closed": 28,
+  "open": 7,
+  "audit": 2,
+  "likely_litres": 96.4,
+  "check_first": ["สบ.71-8635|2026-10-05T02:10", "สบ.70-6303|2026-10-05T14:05"],
+  "sources_missing": [],
+  "ai_text": null
+}
