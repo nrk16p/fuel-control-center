@@ -6,26 +6,22 @@ import relativeTime from "dayjs/plugin/relativeTime"
 import utc from "dayjs/plugin/utc"
 import { Button } from "@/components/ui/button"
 
-import {
-  healthz,
-  engineOnStatus,
-  driverCostStatus,
-  vehicleMasterStatus,
-  engineOnTripSummaryStatus,
-} from "@/lib/etlApi"
+import { healthz, pipelineStatus } from "@/lib/etlApi"
 
 import RunEngineOnModal from "@/components/pipeline/RunEngineOnModal"
 import RunDriverCostModal from "@/components/pipeline/RunDriverCostModal"
 import RunVehicleMasterModal from "@/components/pipeline/RunVehicleMasterModal"
 import RunTripSummaryModal from "@/components/pipeline/RunTripSummaryModal"
 import EtlJobsModal from "@/components/pipeline/EtlJobsModal"
+import JobsTab from "@/components/pipeline/JobsTab"
 
 dayjs.extend(utc)
 dayjs.extend(relativeTime)
 
 /* ---------------- Types ---------------- */
 
-type JobType = "engineon" | "drivercost" | "vehiclemaster" | "engineon-trip-summary"
+/** any /api/pipeline type — TYPE_MAP in lib/pipeline-jobs */
+type JobType = string
 type JobStatus = "queued" | "running" | "success" | "failed"
 
 type RunFn = () => Promise<{ job_id?: string }>
@@ -49,10 +45,17 @@ interface QueuedJob {
   run: RunFn
 }
 
+const TABS = [
+  { key: "etl", label: "ETL" },
+  { key: "jobs", label: "งานประจำ" },
+] as const
+type Tab = (typeof TABS)[number]["key"]
+
 /* ---------------- Page ---------------- */
 
 export default function PipelinePage() {
   const [health, setHealth] = useState<any>(null)
+  const [tab, setTab] = useState<Tab>("etl")
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [queue, setQueue] = useState<QueuedJob[]>([])
@@ -67,6 +70,8 @@ export default function PipelinePage() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const runningJob = useMemo(() => jobs.find((j) => j.status === "running"), [jobs])
+  // bumps when a queued run ends → Jobs tab cards reload their last runs
+  const finishedCount = jobs.filter((j) => j.status === "success" || j.status === "failed").length
 
   /* -------- Health -------- */
   useEffect(() => {
@@ -166,32 +171,17 @@ export default function PipelinePage() {
 
     pollingRef.current = setInterval(async () => {
       try {
-        let res: any
+        const res = await pipelineStatus(runningJob.type, runningJob.jobId!)
 
-        switch (runningJob.type) {
-          case "engineon":
-            res = await engineOnStatus(runningJob.jobId!)
-            break
-          case "drivercost":
-            res = await driverCostStatus(runningJob.jobId!)
-            break
-          case "vehiclemaster":
-            res = await vehicleMasterStatus(runningJob.jobId!)
-            break
-          case "engineon-trip-summary":
-            res = await engineOnTripSummaryStatus(runningJob.jobId!)
-            break
-        }
-
-        if (res?.status === "success" || res?.status === "failed") {
+        if (res.status === "success" || res.status === "failed") {
           setJobs((prev) =>
             prev.map((j) =>
               j.localId === runningJob.localId
                 ? {
                     ...j,
                     status: res.status,
-                    finishedAt: res.finished_at ?? new Date().toISOString(),
-                    message: res?.error ?? j.message,
+                    finishedAt: new Date().toISOString(),
+                    message: res.error ?? j.message,
                   }
                 : j
             )
@@ -232,13 +222,34 @@ export default function PipelinePage() {
         </Button>
       </section>
 
-      {/* Actions */}
-      <section className="grid grid-cols-2 gap-4">
-        <Button onClick={() => setOpenEngineOn(true)}>🔥 Run Engine-On</Button>
-        <Button onClick={() => setOpenDriverCost(true)}>💰 Driver Cost</Button>
-        <Button onClick={() => setOpenVehicleMaster(true)}>🚚 Vehicle Master</Button>
-        <Button onClick={() => setOpenTripSummary(true)}>📊 Trip Summary</Button>
-      </section>
+      {/* Tabs — ETL (the original buttons) | งานประจำ (scheduled jobs); both feed the queue below */}
+      <nav role="tablist" className="flex gap-1 border-b">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            onClick={() => setTab(t.key)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
+              tab === t.key ? "border-blue-600 text-blue-700" : "border-transparent text-gray-500 hover:text-gray-800"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "etl" ? (
+        <section className="grid grid-cols-2 gap-4">
+          <Button onClick={() => setOpenEngineOn(true)}>🔥 Run Engine-On</Button>
+          <Button onClick={() => setOpenDriverCost(true)}>💰 Driver Cost</Button>
+          <Button onClick={() => setOpenVehicleMaster(true)}>🚚 Vehicle Master</Button>
+          <Button onClick={() => setOpenTripSummary(true)}>📊 Trip Summary</Button>
+        </section>
+      ) : (
+        <JobsTab onQueue={enqueue} refreshKey={finishedCount} />
+      )}
 
       {/* Timeline */}
       <section className="bg-white border rounded-xl shadow-sm">
