@@ -9,7 +9,7 @@ import type { FuelDetectionData } from "@/lib/types"
    Types
 --------------------------------------- */
 export type ReviewRow = {
-  _id: any
+  _id: string // ObjectId มาเป็นสตริงผ่าน JSON — ชนิดเดียวกับ ReviewRow ของ FuelDetectionGraph
   plate: string
   start_ts: number
   end_ts: number
