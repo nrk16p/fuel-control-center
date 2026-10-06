@@ -2,8 +2,8 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import {
-  addDays, dateKeysBetween, dayStartMs, fmtDateKey, fmtThaiDateTime, fmtThaiDay, fmtThaiTime,
-  thaiDateKey, thaiHour, thaiMidnight, windowDateKeys, yesterdayKey,
+  MAX_DATE_KEYS, addDays, dateKeysBetween, dayStartMs, daySpan, fmtDateKey, fmtThaiDateTime, fmtThaiDay, fmtThaiTime,
+  isDateKey, thaiDateKey, thaiHour, thaiMidnight, windowDateKeys, yesterdayKey,
 } from "./thai-time.ts"
 
 // UTC wall clock → epoch ms (Thailand is UTC+7)
@@ -42,4 +42,31 @@ test("event windows crossing midnight cover both days", () => {
   const end = at(2026, 10, 5, 17, 20) // 00:20 on 6 Oct
   assert.deepEqual(windowDateKeys(start, end, 0), ["2026-10-05", "2026-10-06"])
   assert.deepEqual(windowDateKeys(at(2026, 10, 5, 5, 0), at(2026, 10, 5, 6, 0), 3 * 3_600_000), ["2026-10-05"])
+})
+
+test("only real calendar days are date keys", () => {
+  for (const key of ["2026-10-05", "2024-02-29", "2026-12-31"]) assert.equal(isDateKey(key), true, key)
+  for (const key of ["9999-99-99", "2026-02-29", "2026-02-30", "2026-13-01", "2026-00-10", "0099-01-01", "2026-1-05", "2026-10-05x", ""]) {
+    assert.equal(isDateKey(key), false, key)
+  }
+})
+
+test("day spans are computed, not counted", () => {
+  assert.equal(daySpan("2026-10-05", "2026-10-05"), 1)
+  assert.equal(daySpan("2026-09-28", "2026-10-05"), 8)
+  assert.equal(daySpan("2025-12-30", "2026-01-02"), 4)
+  assert.ok(daySpan("2026-10-05", "2026-10-04") <= 0)
+  const t0 = performance.now()
+  assert.equal(daySpan("2026-01-01", "9999-12-31"), 2_912_443)
+  assert.ok(performance.now() - t0 < 50)
+})
+
+test("date key ranges refuse impossible keys and huge spans before looping", () => {
+  const t0 = performance.now()
+  assert.throws(() => dateKeysBetween("2026-01-01", "9999-99-99"), RangeError)
+  assert.throws(() => dateKeysBetween("2026-02-30", "2026-03-02"), RangeError)
+  assert.throws(() => dateKeysBetween("2026-01-01", "9999-12-31"), RangeError)
+  assert.ok(performance.now() - t0 < 50)
+  assert.equal(dateKeysBetween("2026-01-01", addDays("2026-01-01", MAX_DATE_KEYS - 1)).length, MAX_DATE_KEYS)
+  assert.deepEqual(dateKeysBetween("2026-10-05", "2026-10-04"), [])
 })

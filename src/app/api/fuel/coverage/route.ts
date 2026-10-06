@@ -2,13 +2,12 @@ import { NextResponse } from "next/server"
 import { analytics, fixturesOn } from "@/lib/fuel-db"
 import { FIXTURE_SERIES } from "@/lib/fuel-fixtures"
 import { coverageRows, type SeriesDoc } from "@/lib/fuel-series"
-import { yesterdayKey } from "@/lib/thai-time"
+import { isDateKey, yesterdayKey } from "@/lib/thai-time"
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 export async function GET(request: Request) {
   const date = new URL(request.url).searchParams.get("date") || yesterdayKey(Date.now())
-  if (!DATE_RE.test(date)) return NextResponse.json({ error: "date ต้องเป็น YYYY-MM-DD" }, { status: 400 })
+  if (!isDateKey(date)) return NextResponse.json({ error: "date ต้องเป็น YYYY-MM-DD" }, { status: 400 })
   try {
     const docs: SeriesDoc[] = fixturesOn()
       ? FIXTURE_SERIES.filter((d) => d.date_key === date)

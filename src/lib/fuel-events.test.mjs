@@ -98,3 +98,12 @@ test("evidence rows show size first and only the features that exist", () => {
   ])
   assert.deepEqual(evidenceRows(events[4]).at(-1), { label: "สถานที่", value: "ลานจอดริมถนน" })
 })
+
+test("impossible dates are refused, so NaN cannot skip the 31-day limit", () => {
+  for (const qs of ["from=2026-01-01&to=9999-99-99", "from=2026-02-30&to=2026-03-01", "from=2026-10-01&to=2026-1-05"]) {
+    assert.equal(parse(qs).ok, false, qs)
+  }
+  assert.match(parse("from=2026-01-01&to=2026-03-01").error, /31/)
+  assert.equal(parse("from=2026-09-05&to=2026-10-05").ok, true)
+  assert.equal(parse("from=2026-09-04&to=2026-10-05").ok, false)
+})

@@ -35,12 +35,23 @@ export type EventFilter = {
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string }
 
+/** เลขวัน (UTC) ของ "YYYY-MM-DD" ที่เป็นวันจริง ไม่งั้น null — เหมือน isDateKey ใน thai-time แต่ไฟล์นี้ import ได้แค่ type */
+function dayNumber(key: string): number | null {
+  if (!DATE_RE.test(key)) return null
+  const [y, m, d] = key.split("-").map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
+  const real = date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d
+  return real ? date.getTime() / 86_400_000 : null
+}
+
 export function parseEventFilter(params: URLSearchParams, defaultDay: string): Parsed<EventFilter> {
   const from = params.get("from") || defaultDay
   const to = params.get("to") || from
-  if (!DATE_RE.test(from) || !DATE_RE.test(to)) return { ok: false, error: "from / to ต้องเป็น YYYY-MM-DD" }
-  if (to < from) return { ok: false, error: "วันสิ้นสุดต้องไม่ก่อนวันเริ่ม" }
-  if ((Date.parse(to) - Date.parse(from)) / 86_400_000 + 1 > MAX_RANGE_DAYS) {
+  const fromDay = dayNumber(from)
+  const toDay = dayNumber(to)
+  if (fromDay === null || toDay === null) return { ok: false, error: "from / to ต้องเป็นวันที่จริงแบบ YYYY-MM-DD" }
+  if (toDay < fromDay) return { ok: false, error: "วันสิ้นสุดต้องไม่ก่อนวันเริ่ม" }
+  if (toDay - fromDay + 1 > MAX_RANGE_DAYS) {
     return { ok: false, error: `เลือกได้ไม่เกิน ${MAX_RANGE_DAYS} วัน` }
   }
   const status = params.get("status") || "waiting"

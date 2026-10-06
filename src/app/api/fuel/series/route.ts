@@ -4,9 +4,8 @@ import { FIXTURE_EVENTS, FIXTURE_SERIES } from "@/lib/fuel-fixtures"
 import { buildSeries, coverageVerdict, lastSeenOf, type SeriesDoc } from "@/lib/fuel-series"
 import type { FuelEvent, FuelEventDoc, Source } from "@/lib/fuel-types"
 import { decodeColumns, fuelToLitres, toDegrees } from "@/lib/series-codec"
-import { addDays, dateKeysBetween, yesterdayKey } from "@/lib/thai-time"
+import { addDays, daySpan, isDateKey, yesterdayKey } from "@/lib/thai-time"
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const MAX_DAYS = 14
 const SOURCES: Source[] = ["besttech", "terminus"]
 const codec = { decodeColumns, fuelToLitres, toDegrees }
@@ -19,10 +18,10 @@ export async function GET(request: Request) {
   const from = params.get("from") || addDays(to, -2)
   const source = params.get("source") || null
   if (!plate) return NextResponse.json({ error: "ต้องระบุทะเบียน" }, { status: 400 })
-  if (!DATE_RE.test(from) || !DATE_RE.test(to) || to < from) {
+  if (!isDateKey(from) || !isDateKey(to) || to < from) {
     return NextResponse.json({ error: "ช่วงวันที่ไม่ถูกต้อง" }, { status: 400 })
   }
-  if (dateKeysBetween(from, to).length > MAX_DAYS) {
+  if (daySpan(from, to) > MAX_DAYS) {
     return NextResponse.json({ error: `เลือกได้ไม่เกิน ${MAX_DAYS} วัน` }, { status: 400 })
   }
   if (source && !SOURCES.includes(source as Source)) return NextResponse.json({ error: "แหล่ง GPS ไม่ถูกต้อง" }, { status: 400 })

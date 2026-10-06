@@ -4,19 +4,18 @@ import { FIXTURE_EVENTS } from "@/lib/fuel-fixtures"
 import { buildReport, confirmedRows, type ReportEvent } from "@/lib/fuel-report"
 import { DEFAULT_SETTINGS, SETTINGS_ID, withDefaults, type SettingsDoc } from "@/lib/fuel-settings"
 import type { FuelEventDoc } from "@/lib/fuel-types"
-import { addDays, dateKeysBetween, yesterdayKey } from "@/lib/thai-time"
+import { addDays, daySpan, isDateKey, yesterdayKey } from "@/lib/thai-time"
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const MAX_DAYS = 366
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams
   const to = params.get("to") || yesterdayKey(Date.now())
   const from = params.get("from") || addDays(to, -29)
-  if (!DATE_RE.test(from) || !DATE_RE.test(to) || to < from) {
+  if (!isDateKey(from) || !isDateKey(to) || to < from) {
     return NextResponse.json({ error: "ช่วงวันที่ไม่ถูกต้อง" }, { status: 400 })
   }
-  if (dateKeysBetween(from, to).length > MAX_DAYS) {
+  if (daySpan(from, to) > MAX_DAYS) {
     return NextResponse.json({ error: `เลือกได้ไม่เกิน ${MAX_DAYS} วัน` }, { status: 400 })
   }
   try {

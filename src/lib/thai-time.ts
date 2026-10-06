@@ -41,10 +41,24 @@ export const addDays = (dateKey: string, days: number) => thaiDateKey(dayStartMs
 
 export const yesterdayKey = (nowMs: number) => addDays(thaiDateKey(nowMs), -1)
 
-/** ทุก date_key ตั้งแต่ from ถึง to (รวมปลายทั้งสอง) */
+const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/** "YYYY-MM-DD" ที่เป็นวันจริงเท่านั้น — 2026-02-30 / 9999-99-99 ไม่ผ่าน (แปลงไปกลับต้องได้ค่าเดิม) */
+export const isDateKey = (key: string) => DATE_KEY_RE.test(key) && thaiDateKey(dayStartMs(key)) === key
+
+/** จำนวนวันตั้งแต่ from ถึง to รวมปลาย — คำนวณตรง ไม่วนลูป (to ก่อน from → ≤ 0) */
+export const daySpan = (fromKey: string, toKey: string) => Math.round((dayStartMs(toKey) - dayStartMs(fromKey)) / DAY_MS) + 1
+
+/** ช่วงยาวสุดที่ dateKeysBetween ยอมสร้าง (รายงานเลือกได้ไม่เกิน 366 วัน) */
+export const MAX_DATE_KEYS = 366
+
+/** ทุก date_key ตั้งแต่ from ถึง to (รวมปลายทั้งสอง) — คีย์ที่ไม่ใช่วันจริงหรือช่วงเกิน MAX_DATE_KEYS โยน RangeError ก่อนวนลูป */
 export function dateKeysBetween(fromKey: string, toKey: string): string[] {
+  if (!isDateKey(fromKey) || !isDateKey(toKey)) throw new RangeError(`date_key ไม่ถูกต้อง: ${fromKey} – ${toKey}`)
+  const span = daySpan(fromKey, toKey)
+  if (span > MAX_DATE_KEYS) throw new RangeError(`ช่วงวันที่ยาวเกิน ${MAX_DATE_KEYS} วัน`)
   const keys: string[] = []
-  for (let key = fromKey; key <= toKey; key = addDays(key, 1)) keys.push(key)
+  for (let i = 0; i < span; i++) keys.push(addDays(fromKey, i))
   return keys
 }
 
