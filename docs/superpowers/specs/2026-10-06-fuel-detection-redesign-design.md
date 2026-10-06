@@ -55,28 +55,33 @@ One document per truck × day × source. Readings are grouped into 1-minute buck
 ```js
 {
   _id: "สบ.71-8635|2026-10-05|besttech",
-  plate: "สบ.71-8635",        // digits \d{2}-\d{4} + "สบ." prefix — same rule as mongodb-gps app/utils/plate.py
+  plate: "สบ.71-8635",        // digits \d{2}-\d{4} + "สบ." prefix — same rule as mongodb-gps app/utils/plate.py;
+                               // other formats (15 of 424 Terminus plates, e.g. "กว4506") kept trimmed
   truck_code: "ME152",         // Besttech code / Terminus รหัสพาหนะ
   date_key: "2026-10-05",
   date: ISODate("2026-10-04T17:00:00Z"),   // 00:00 Thai time; TTL field
   source: "besttech",          // besttech | terminus
-  tank_l: 200, tank_from: "calibrated",    // atms | calibrated | default
+  fuel_unit: "cpct",           // unit of the fuel columns: "cpct" centi-percent (Besttech) | "dl" deci-litres (Terminus)
+  tank_l: 200, tank_from: "calibrated",    // atms | calibrated | observed | default — re-stamped by fuel_tanks
   enc: 1,                      // codec version
   n: 1012,                     // number of minute buckets
   cols: {                      // BinData, little-endian, n values each
     m:       uint16,           // minute of day 0–1439
-    fuel:    int16,            // median fuel in the minute, deci-litres (−1 = no valid reading)
-    fuel_lo: int16,            // min in the minute, deci-litres
-    fuel_hi: int16,            // max in the minute, deci-litres
+    fuel:    int16,            // median fuel in the minute, in fuel_unit (−1 = no valid reading)
+    fuel_lo: int16,            // min in the minute
+    fuel_hi: int16,            // max in the minute
     speed:   uint8,            // max km/h
     engine:  uint8,            // 1 if any reading had engine on
-    lat:     int32,            // last reading of the minute × 1e5
+    lat:     int32,            // last reading of the minute × 1e5 (0 = no position)
     lng:     int32
   },
-  coverage: { points, minutes, fuel_valid_share, max_gap_min, first, last, status },
+  coverage: { points, minutes, fuel_valid_share, max_gap_min, first, last, moved_km, status },
   ingested_at: ISODate
 }
 ```
+
+- Fuel stays in the vendor's own unit so a new tank size never forces a re-download: litres = `fuel / 10` for `dl`, `fuel / 10000 × tank_l` for `cpct`. Both codecs ship this conversion.
+- `moved_km` is computed from consecutive positions (haversine, jumps > 5 km ignored); Terminus's per-row `ระยะทาง(กม.)` is always 0.
 
 - Codec: `scripts/fuel/series_codec.py` (numpy `tobytes`/`frombuffer`) and `src/lib/series-codec.ts` (typed arrays). Both carry round-trip tests.
 - Indexes: `{date_key: 1, source: 1}`, `{plate: 1, date_key: -1}`, TTL on `date` (`expireAfterSeconds` = 400 days).
@@ -87,9 +92,9 @@ One document per truck × day × source. Readings are grouped into 1-minute buck
 | Status | Rule |
 |---|---|
 | `no_data` | truck in the vendor list / master but no readings all day (doc written without `cols` so the page can explain the gap) |
-| `offline` | Besttech only: `/track` reports `OFFLINE`, or last `gps_time` is before the day |
+| `offline` | Besttech only, no readings that day, and the box's last `gps_time` in `/track` is before the day (silent since then) |
 | `no_sensor` | readings exist but every fuel value is invalid (Besttech −1, Terminus null/0) |
-| `stuck` | `fuel_hi − fuel_lo == 0` on ≥ 95 % of engine-on minutes while the truck moved ≥ 50 km |
+| `stuck` | fuel has a single value across all engine-on minutes while the truck moved ≥ 50 km (Terminus sends ~1 reading per minute, so a within-minute rule would flag every Terminus truck) |
 | `ok` | otherwise |
 
 ### 3.3 Jobs
@@ -103,8 +108,8 @@ All jobs live in `scripts/fuel/` and are registered in `routes/pipeline/pipeline
 | `fuel_events` | `pipeline_fuel_events.py` | inside `fuel_nightly` | Part 2 |
 | `fuel_nightly` | `pipeline_fuel_nightly.py` | 04:15 (21:15) | runs Besttech again only if yesterday's Besttech docs are missing → Terminus → events. Engine-on reads the same day at 04:00 in ~50 s; this finishes before `atms_stockmovement` at 05:00 |
 | `fuel_tanks` | `pipeline_fuel_tanks.py` | manual / after backfill | tank sizes (3.4) |
-| `fuel_places` | `pipeline_fuel_places.py` | Mon 01:00 (Sun 18:00) | plants + Besttech POIs for the "at a place" feature (4.3) |
-| `fuel_train` | `pipeline_fuel_train.py` | 2nd of month 03:30 (day 1, 20:30) | ML training + evaluation (4.5) |
+| `fuel_places` | `pipeline_fuel_places.py` | Mon 01:00 (Sun 18:00) | plants + Besttech POIs for the "at a place" feature (4.3) — built in the Part 2 plan |
+| `fuel_train` | `pipeline_fuel_train.py` | 2nd of month 03:30 (day 1, 20:30) | ML training + evaluation (4.5) — built in the Part 2 plan |
 
 Env (Render): `BESTTECH_API` (same key as the `mongodb-gps` secret), `BESTTECH_BASE_URL` (default `https://besttransportservice.bestgeosystem.com/apiservices`). Requests send `Content-Type: application/json` with no charset suffix (a suffix returns HTTP 415, per `mongodb-gps`). New dependency: `scikit-learn` (training only); `pytest` as a dev dependency.
 
@@ -113,15 +118,16 @@ Env (Render): `BESTTECH_API` (same key as the `mongodb-gps` secret), `BESTTECH_B
 `analytics.fuel_tanks`: `{plate, tank_l, tank_from, fit_r2, n_pairs, updated_at}`. First source that applies:
 
 1. **ATMS** `vehiclemaster.ความจุถังน้ำมัน` when numeric (`"200"`, `"200L"` → 200). Filled for 16 of 137 Besttech trucks.
-2. **Calibrated** from Jun–Aug 2026, when trucks carried both boxes: pair Besttech % with Terminus litres within ±60 s while parked; fit `litres = k × %` through the origin; accept `tank_l = 100 k` when R² ≥ 0.9 and ≥ 200 pairs. A poor fit marks the sensor in the data-status tab.
-3. **Default** 200 L, flagged.
+2. **Calibrated** from Jun–Aug 2026, when trucks carried both boxes: pair Besttech % with Terminus litres in the same minute while both are parked; fit `litres = k × %` through the origin; accept `tank_l = 100 k` when R² ≥ 0.9 and ≥ 200 pairs. A poor fit marks the sensor in the data-status tab.
+3. **Observed** (litre sensors): the largest reading in the last 30 days, rounded up to 10 L. Terminus maxima cluster at ~80, ~200 and ~390 L, so a flat default would be wrong for many trucks.
+4. **Default** 200 L, flagged.
 
-Terminus series are already in litres; `tank_l` is used there only for "% of tank" features.
+Terminus series are already in litres; `tank_l` is used there only for "% of tank" features. The job re-stamps `tank_l` / `tank_from` on existing `gps_series` docs (metadata only, columns untouched).
 
 ### 3.5 Backfill
 
 - **Besttech:** 2026-05-26 → yesterday, a one-off resumable run of `fuel_series_besttech` (≈ 3,200 calls; ≈ 31 h at 35 s spacing, less if a shorter spacing proves safe — see §9). It pauses 09:00–10:00 BKK so it doesn't collide with `mongodb-gps`'s 09:25 Besttech ingest on the same key. ≈ 0.25 GB on disk.
-- **Terminus:** (a) the ~716 truck-days behind the 78 reviews whose windows end on/after 2026-03-01 (training labels); (b) the last 30 days for all trucks (queue history, burn baselines). The 142 older reviews have no raw GPS left — Terminus data starts 2026-03-01.
+- **Terminus:** (a) the ~716 truck-days behind the 78 reviews whose windows end on/after 2026-03-01 (training labels); (b) the last 30 days for all trucks (queue history, burn baselines, observed tank sizes); (c) the Besttech plates on 12 sample dates in Jun–Aug (1st, 8th, 15th, 22nd of each month) for tank calibration. The 142 older reviews have no raw GPS left — Terminus data starts 2026-03-01.
 
 ---
 
