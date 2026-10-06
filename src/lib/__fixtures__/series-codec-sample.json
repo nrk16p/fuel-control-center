@@ -1,0 +1,56 @@
+{
+ "enc": 1,
+ "n": 3,
+ "cols": {
+  "m": "AAABAJ8F",
+  "fuel": "IAf//wAA",
+  "fuel_lo": "CAf//wAA",
+  "fuel_hi": "Ogf//wAA",
+  "speed": "AC3/",
+  "engine": "AAEB",
+  "lat": "+AwVAAAAAACrzBUA",
+  "lng": "JXCZAAAAAAC0yJkA"
+ },
+ "expected": {
+  "m": [
+   0,
+   1,
+   1439
+  ],
+  "fuel": [
+   1824,
+   -1,
+   0
+  ],
+  "fuel_lo": [
+   1800,
+   -1,
+   0
+  ],
+  "fuel_hi": [
+   1850,
+   -1,
+   0
+  ],
+  "speed": [
+   0,
+   45,
+   255
+  ],
+  "engine": [
+   0,
+   1,
+   1
+  ],
+  "lat": [
+   1379576,
+   0,
+   1428651
+  ],
+  "lng": [
+   10055717,
+   0,
+   10078388
+  ]
+ }
+}
