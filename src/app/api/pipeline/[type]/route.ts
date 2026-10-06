@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+
+import { authOptions } from "@/lib/auth"
+import { TYPE_MAP, pickAllowed } from "@/lib/pipeline-jobs"
 
 /**
  * Proxy to the api-ncac pipeline framework — keeps PIPELINE_API_KEY server-side.
@@ -6,18 +10,13 @@ import { NextResponse } from "next/server"
  * POST /api/pipeline/{type}  → POST {NCAC}/pipeline/run/{ncacType}   (trigger, body = params)
  * GET  /api/pipeline/{type}  → GET  {NCAC}/pipeline/status/{ncacType} (status)
  * GET  /api/pipeline/health  → GET  {NCAC}/                            (health)
+ *
+ * POST needs a signed-in session (every Run button, ETL and งานประจำ tabs) and forwards only the
+ * type's allow-listed keys — api-ncac turns each body key into an env var for the script.
  */
 
 const NCAC_BASE = process.env.NCAC_API_BASE ?? "https://api-ncac.onrender.com"
 const API_KEY = process.env.PIPELINE_API_KEY ?? ""
-
-// UI job type → api-ncac pipeline type
-const TYPE_MAP: Record<string, string> = {
-  engineon: "engineon",
-  drivercost: "drivercost_ticket",
-  vehiclemaster: "vehiclemaster",
-  "engineon-trip-summary": "engineon_trip_summary",
-}
 
 // legacy fields the old api-engineon accepted — never forward these
 const STRIP_KEYS = new Set(["phpsessid", "base_url", "index_url", "db_name", "collection_name"])
@@ -25,6 +24,9 @@ const STRIP_KEYS = new Set(["phpsessid", "base_url", "index_url", "db_name", "co
 type Ctx = { params: Promise<{ type: string }> | { type: string } }
 
 export async function POST(req: Request, ctx: Ctx) {
+  if (!(await getServerSession(authOptions))) {
+    return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อนสั่งรัน" }, { status: 401 })
+  }
   const { type } = await Promise.resolve(ctx.params)
   const ncacType = TYPE_MAP[type]
   if (!ncacType) {
@@ -38,7 +40,7 @@ export async function POST(req: Request, ctx: Ctx) {
     /* empty body is fine */
   }
   const params = Object.fromEntries(
-    Object.entries(body ?? {}).filter(([k]) => !STRIP_KEYS.has(k))
+    Object.entries(pickAllowed(type, body)).filter(([k]) => !STRIP_KEYS.has(k))
   )
 
   try {

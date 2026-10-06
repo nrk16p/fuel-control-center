@@ -5,9 +5,15 @@
  * Job model: POST returns { job_id: "<type>:<triggerMs>" }. Status polling hits
  * GET /api/pipeline/{type} → { running, last_run } (last_run = analytics.etl_jobs doc)
  * and reports success/failed once a job-log created after the trigger completes.
+ * `type` is any key of TYPE_MAP in lib/pipeline-jobs.
  */
 
-type UiJobType = "engineon" | "drivercost" | "vehiclemaster" | "engineon-trip-summary"
+export type PipelineStatus = {
+  status: "running" | "success" | "failed"
+  error?: string
+  job_id?: string
+  rows?: number
+}
 
 /** how long we wait for the subprocess to write its job log before failing */
 const START_GRACE_MS = 60_000
@@ -26,7 +32,7 @@ export async function healthz() {
 /* -----------------------------
    Trigger + status core
 ------------------------------ */
-async function trigger(type: UiJobType, payload?: Record<string, unknown>) {
+async function trigger(type: string, payload?: Record<string, unknown>) {
   const res = await fetch(`/api/pipeline/${type}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -40,7 +46,7 @@ async function trigger(type: UiJobType, payload?: Record<string, unknown>) {
   return data as { job_id: string }
 }
 
-async function status(type: UiJobType, jobId: string) {
+async function status(type: string, jobId: string): Promise<PipelineStatus> {
   const triggeredAt = Number(jobId.split(":").pop()) || 0
 
   const res = await fetch(`/api/pipeline/${type}`, { cache: "no-store" })
@@ -113,4 +119,13 @@ export async function runEngineOnTripSummary(payload: {
 
 export async function engineOnTripSummaryStatus(jobId: string) {
   return status("engineon-trip-summary", jobId)
+}
+
+/* ---------------- Any pipeline (Jobs tab, generic polling) ---------------- */
+export async function triggerPipeline(type: string, payload?: Record<string, unknown>) {
+  return trigger(type, payload)
+}
+
+export async function pipelineStatus(type: string, jobId: string) {
+  return status(type, jobId)
 }
