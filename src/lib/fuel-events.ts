@@ -132,6 +132,19 @@ export function buildEventsPipeline(filter: EventFilter): Record<string, unknown
   ]
 }
 
+/** หัวรายการคิว — บอก "แสดง X จาก Y" เมื่อรายการถูกตัดที่ limit */
+export function listCaption(shown: number, total: number): string {
+  const order = "เรียงตามลิตรที่น่าจะหาย"
+  if (total <= shown) return `${shown} เหตุการณ์ · ${order}`
+  const hint = shown >= MAX_LIMIT ? " — ลดช่วงวันที่หรือใช้ตัวกรองเพื่อดูที่เหลือ" : ""
+  return `แสดง ${shown} จาก ${total} เหตุการณ์ · ${order}${hint}`
+}
+
+/** ปุ่ม "แสดงเพิ่ม": limit ถัดไป (ไม่เกิน MAX_LIMIT) หรือ null เมื่อแสดงครบหรือถึงเพดานแล้ว */
+export function nextLimit(limit: number, total: number): number | null {
+  return total > limit && limit < MAX_LIMIT ? Math.min(MAX_LIMIT, total) : null
+}
+
 /** /api/fuel/events?… — ข้ามค่าว่าง */
 export function eventsUrl(input: Record<string, string | number | null | undefined>): string {
   const params = new URLSearchParams()

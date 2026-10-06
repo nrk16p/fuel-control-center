@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs"
 import { test } from "node:test"
 
 import {
-  MAX_LIMIT, buildEventsPipeline, buildEventsQuery, eventPath, eventsUrl, evidenceRows, matchesFilter, neighbourId,
-  nextWaitingId, parseEventFilter, rankEvents, rankKey,
+  MAX_LIMIT, buildEventsPipeline, buildEventsQuery, eventPath, eventsUrl, evidenceRows, listCaption, matchesFilter, neighbourId,
+  nextLimit, nextWaitingId, parseEventFilter, rankEvents, rankKey,
 } from "./fuel-events.ts"
 
 const events = JSON.parse(readFileSync(new URL("./__fixtures__/fuel-events-sample.json", import.meta.url), "utf8"))
@@ -133,4 +133,14 @@ test("the queue is ranked in Mongo before the limit, in rankEvents order", () =>
     .sort((a, b) => b.rank - a.rank || a.start - b.start)
     .map((e) => e.id)
   assert.deepEqual(inMongo, rankEvents(all).map((e) => e._id))
+})
+
+test("the list says when it is cut short and offers more, up to the cap", () => {
+  assert.equal(listCaption(37, 37), "37 เหตุการณ์ · เรียงตามลิตรที่น่าจะหาย")
+  assert.equal(listCaption(100, 979), "แสดง 100 จาก 979 เหตุการณ์ · เรียงตามลิตรที่น่าจะหาย")
+  assert.match(listCaption(500, 9000), /^แสดง 500 จาก 9000 เหตุการณ์ .*ลดช่วงวันที่/)
+  assert.equal(nextLimit(100, 979), MAX_LIMIT)
+  assert.equal(nextLimit(100, 130), 130)
+  assert.equal(nextLimit(100, 100), null)
+  assert.equal(nextLimit(MAX_LIMIT, 9000), null)
 })

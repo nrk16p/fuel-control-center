@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { keyAction } from "@/lib/fuel-decision"
-import { eventPath, eventsUrl, neighbourId, nextWaitingId, type StatusFilter } from "@/lib/fuel-events"
+import {
+  DEFAULT_LIMIT, eventPath, eventsUrl, listCaption, neighbourId, nextLimit, nextWaitingId, type StatusFilter,
+} from "@/lib/fuel-events"
 import type { DailySummary, Decision, EventClass, FuelEvent, Source } from "@/lib/fuel-types"
 import { DecisionBar } from "./DecisionBar"
 import { EventCard } from "./EventCard"
@@ -47,6 +49,7 @@ export function QueueTab() {
     plant: "",
   }))
   const [selectedId, setSelectedId] = useState<string | null>(() => params.get("event"))
+  const [limit, setLimit] = useState(DEFAULT_LIMIT)
   const [decided, setDecided] = useState<Record<string, Decision>>({})
   const [note, setNote] = useState("")
   const [pendingLoss, setPendingLoss] = useState(false)
@@ -65,6 +68,7 @@ export function QueueTab() {
       branch: filters.branch,
       fleet: filters.fleet,
       plant: filters.plant,
+      limit: limit === DEFAULT_LIMIT ? null : limit,
     }),
   )
 
@@ -73,6 +77,7 @@ export function QueueTab() {
     decided[e._id] ? { ...e, status: "decided" as const, decision: decided[e._id] } : e,
   )
   const ids = events.map((e) => e._id)
+  const more = list.data ? nextLimit(limit, list.data.total) : null
   const selected = events.find((e) => e._id === selectedId) ?? null
   const shownFilters: QueueFilters = {
     ...filters,
@@ -148,6 +153,7 @@ export function QueueTab() {
         value={shownFilters}
         onChange={(next) => {
           setFilters(next)
+          setLimit(DEFAULT_LIMIT)
           select(null)
         }}
       />
@@ -156,7 +162,7 @@ export function QueueTab() {
           <p className="text-[13px] text-muted-ink">
             {list.loading
               ? "กำลังโหลด…"
-              : `${events.length} เหตุการณ์ เรียงตามลิตรที่น่าจะหาย${list.data?.truncated ? " (แสดงบางส่วน — ลดช่วงวันที่)" : ""}`}
+              : listCaption(events.length, list.data?.total ?? events.length)}
           </p>
           {list.error && (
             <p role="alert" className="text-[14px] text-clay">
@@ -169,6 +175,15 @@ export function QueueTab() {
           {events.map((e) => (
             <EventCard key={e._id} event={e} selected={e._id === selectedId} onSelect={() => select(e._id)} />
           ))}
+          {more !== null && !list.loading && (
+            <button
+              type="button"
+              onClick={() => setLimit(more)}
+              className="w-full rounded-[14px] border border-line bg-surface px-3 py-2 text-[13px] font-semibold text-forest hover:bg-mint"
+            >
+              แสดงเพิ่ม (ถึง {more} รายการ)
+            </button>
+          )}
         </section>
         {selected ? (
           <div className="fixed inset-0 z-40 overflow-y-auto bg-cream p-4 lg:static lg:z-auto lg:overflow-visible lg:bg-transparent lg:p-0">
