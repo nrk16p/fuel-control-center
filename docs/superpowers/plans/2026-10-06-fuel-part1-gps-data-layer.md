@@ -10,6 +10,12 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-06-fuel-detection-redesign-design.md` (this repo) — §3 Part 1, §6, §7, §9. Read it alongside this plan.
 
+> **Execution notes (2026-10-06, executed — branch `feat/fuel-gps-series` up to `568838d`, FCC `feat/fuel-redesign` `c67dff9`).** The tasks below are the plan as written; where they differ from what shipped, the code and the spec win:
+> - Besttech is fetched with one per-vehicle `/history` call per truck-day, not `/history_all` (measured: `/history_all` locks the key out for ≥ 20 min after ~7 calls). `BesttechClient.history_all` was removed; `fetch_day(client, day, track_vehicles)` takes the `/track` list.
+> - `fuel_series_besttech` runs at **01:30 BKK (18:30 UTC)** (~76 min); `fuel_nightly` skips its Besttech catch-up while a run started < 2.5 h ago is still running.
+> - Final-review fixes: single-vehicle errors isolated (> 25 % fails the day), 5 network attempts (10/30/60/120 s), empty `/track` is an error, null Terminus plates skipped (`day_plates`).
+> - Task 10 Steps 6–11 (all backfills, calibration, tank run) were **not run** — the user declined backfill. The executor ledger lives in the api-ncac worktree under `.superpowers/sdd/2026-10-06-fuel-part1-gps-data-layer/progress.md`.
+
 ## Global Constraints
 
 - Work only in worktrees: api-ncac → `~/Documents/project/ncac/api-ncac-fuel` (branch `feat/fuel-gps-series` from `origin/main`); fuel-control-center → `~/Documents/project/fuel-control-center/fcc-fuel` (branch `feat/fuel-redesign`). The main api-ncac checkout is behind `origin/main`; never branch from it.

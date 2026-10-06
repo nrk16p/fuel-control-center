@@ -103,11 +103,11 @@ All jobs live in `scripts/fuel/` and are registered in `routes/pipeline/pipeline
 
 | Pipeline type | Script | Schedule BKK (UTC) | What it does |
 |---|---|---|---|
-| `fuel_series_besttech` | `series_besttech.py` | 02:30 (19:30) | `/track` once (vehicle list + status) → `/history_all` × 24 one-hour windows, ≥ 35 s apart; on `error.TooManyRequests` wait 15/30/45/60 s → bucket → upsert |
+| `fuel_series_besttech` | `series_besttech.py` | 01:30 (18:30) | `/track` once (vehicle list + status; an empty list is an error) → one per-vehicle `/history` call for the whole day (≤ 24 h per call), ≥ 35 s apart (~131 calls ≈ 76 min); boxes silent since before the day are not asked; on `error.TooManyRequests` wait 15/30/45/60 s; a vehicle that still errors is logged and written as `no_data`, and more than 25 % failed vehicles fails the day → bucket → upsert. `/history_all` is **not** used: measured 2026-10-06, it locks the key out of that endpoint for ≥ 20 min after ~7 calls |
 | `fuel_series_terminus` | `series_terminus.py` | inside `fuel_nightly` | read yesterday's `terminus.driving_log` by `วันที่` (index `idx_date_plate_status_order_desc`) in batches of 50 trucks → bucket → upsert. Engine: `ดับเครื่อง` → 0, `จอดรถ` / `รถวิ่ง` → 1. Fuel: `น้ำมัน` (litres) |
 | `fuel_events` | `pipeline_fuel_events.py` | inside `fuel_nightly` | Part 2 |
-| `fuel_nightly` | `pipeline_fuel_nightly.py` | 04:15 (21:15) | runs Besttech again only if yesterday's Besttech docs are missing → Terminus → events. Engine-on reads the same day at 04:00 in ~50 s; this finishes before `atms_stockmovement` at 05:00 |
-| `fuel_tanks` | `pipeline_fuel_tanks.py` | manual / after backfill | tank sizes (3.4) |
+| `fuel_nightly` | `pipeline_fuel_nightly.py` | 04:15 (21:15) | runs Besttech again only if yesterday's Besttech docs are missing **and** no `fuel_series_besttech` run started < 2.5 h ago is still marked running (two clients on one key get throttled) → Terminus → events. Engine-on reads the same day at 04:00 in ~50 s |
+| `fuel_tanks` | `pipeline_fuel_tanks.py` | manual | tank sizes (3.4) |
 | `fuel_places` | `pipeline_fuel_places.py` | Mon 01:00 (Sun 18:00) | plants + Besttech POIs for the "at a place" feature (4.3) — built in the Part 2 plan |
 | `fuel_train` | `pipeline_fuel_train.py` | 2nd of month 03:30 (day 1, 20:30) | ML training + evaluation (4.5) — built in the Part 2 plan |
 
@@ -126,8 +126,10 @@ Terminus series are already in litres; `tank_l` is used there only for "% of tan
 
 ### 3.5 Backfill
 
-- **Besttech:** 2026-05-26 → yesterday, a one-off resumable run of `fuel_series_besttech` (≈ 3,200 calls; ≈ 31 h at 35 s spacing, less if a shorter spacing proves safe — see §9). It pauses 09:00–10:00 BKK so it doesn't collide with `mongodb-gps`'s 09:25 Besttech ingest on the same key. ≈ 0.25 GB on disk.
-- **Terminus:** (a) the ~716 truck-days behind the 78 reviews whose windows end on/after 2026-03-01 (training labels); (b) the last 30 days for all trucks (queue history, burn baselines, observed tank sizes); (c) the Besttech plates on 12 sample dates in Jun–Aug (1st, 8th, 15th, 22nd of each month) for tank calibration. The 142 older reviews have no raw GPS left — Terminus data starts 2026-03-01.
+**Declined by the user on 2026-10-06** — data starts with the nightly runs (plus 2026-10-05 from the smoke runs). The options below stay documented for later:
+
+- **Besttech:** 2026-05-26 → yesterday, a one-off resumable run of `fuel_series_besttech`. With per-vehicle `/history` that is ≈ 13,300 known truck-days ≈ 130 h (~5.4 days) at 35 s; the last 30 days ≈ 38 h; the 12 calibration dates ≈ 10.5 h. It pauses 09:00–10:00 BKK so it doesn't collide with `mongodb-gps`'s 09:25 ingest on the same key.
+- **Terminus:** (a) the ~716 truck-days behind the 78 reviews whose windows end on/after 2026-03-01 (training labels); (b) the last 30 days for all trucks (queue history, burn baselines, observed tank sizes); (c) the Besttech plates on 12 sample dates in Jun–Aug (1st, 8th, 15th, 22nd of each month) for tank calibration. The 142 older reviews have no raw GPS left — Terminus data starts 2026-03-01. ⚠️ A March purge of `driving_log` is planned; run (a) first if those labels should survive (`backfill_terminus_reviews.py`, minutes).
 
 ---
 
@@ -310,7 +312,7 @@ The decision and settings writes require a signed-in session (next-auth) so the 
 ## 6. Errors and operations
 
 - Every job logs start / finish / error to `analytics.etl_jobs` (visible on the Pipeline page) and can be re-run per date.
-- **Besttech down:** `fuel_nightly` retries the Besttech step once. If still missing, `sources_missing: ["besttech"]`, a red banner on the morning card, and Besttech trucks get `no_data` with the reason.
+- **Besttech down:** `fuel_nightly` retries the Besttech step once (unless the 01:30 run is still going). If still missing, `sources_missing: ["besttech"]`, a red banner on the morning card, and Besttech trucks get `no_data` with the reason. Single-vehicle errors are isolated (written as `no_data`); network errors retry 5 times (10/30/60/120 s). A day that fails after the 04:15 catch-up is not retried automatically — re-run it with `START_DATE`/`FORCE=1` (or from the Part 4 Jobs tab).
 - **Terminus late:** `fuel_nightly` compares yesterday's point count with the 7-day average. Below 50 % it waits 30 min and retries up to 3 times, then proceeds and flags the source.
 - **Model problems:** if the active model can't load or a feature is missing, scoring falls back to rules v1 and records `scorer: "rules-v1"`.
 - **Disk:** `gps_series` TTL keeps it flat at ~3 GB; the separate `terminus` growth is reported to the user, not handled here.
@@ -343,7 +345,7 @@ Deploys: api-ncac `main` → Render auto-deploy; fuel-control-center `main` → 
 
 | Item | Default until verified |
 |---|---|
-| Shortest safe spacing between Besttech calls | 35 s |
+| Shortest safe spacing between Besttech calls | 35 s — verified 2026-10-06: 10 s throttled on the 3rd call; 35 s held for ~138 `/history` calls with no throttling |
 | Terminus `น้ำมัน` is litres for every truck | treat as litres; flag trucks whose max exceeds 400 |
 | Calibration quality per Besttech truck | 200 L default, flagged |
 | Besttech `/location` (POIs) works with our key | plants from `atms.plants` only |
