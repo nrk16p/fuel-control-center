@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import { test } from "node:test"
 
 import {
-  MAX_LIMIT, buildEventsQuery, eventPath, eventsUrl, evidenceRows, matchesFilter, neighbourId,
+  MAX_LIMIT, buildEventsPipeline, buildEventsQuery, eventPath, eventsUrl, evidenceRows, matchesFilter, neighbourId,
   nextWaitingId, parseEventFilter, rankEvents, rankKey,
 } from "./fuel-events.ts"
 
@@ -106,4 +106,31 @@ test("impossible dates are refused, so NaN cannot skip the 31-day limit", () => 
   assert.match(parse("from=2026-01-01&to=2026-03-01").error, /31/)
   assert.equal(parse("from=2026-09-05&to=2026-10-05").ok, true)
   assert.equal(parse("from=2026-09-04&to=2026-10-05").ok, false)
+})
+
+// ตัวประเมิน expression ของ Mongo เท่าที่ขั้น _rank ใช้ ($ifNull / $max / $multiply)
+function evalExpr(expr, doc) {
+  if (typeof expr === "string" && expr.startsWith("$")) return doc[expr.slice(1)]
+  if (expr === null || typeof expr !== "object") return expr
+  const [op, args] = Object.entries(expr)[0]
+  const v = args.map((a) => evalExpr(a, doc))
+  if (op === "$ifNull") return v[0] ?? v[1]
+  if (op === "$max") return Math.max(...v.filter((x) => x != null))
+  if (op === "$multiply") return v.reduce((a, b) => a * b, 1)
+  throw new Error(`unexpected operator ${op}`)
+}
+
+test("the queue is ranked in Mongo before the limit, in rankEvents order", () => {
+  const filter = parse("from=2026-10-04&to=2026-10-05&status=all&limit=3").value
+  const pipeline = buildEventsPipeline(filter)
+  assert.deepEqual(pipeline[0], { $match: buildEventsQuery(filter) })
+  assert.deepEqual(pipeline[2], { $sort: { _rank: -1, start: 1 } })
+  assert.deepEqual(pipeline[3], { $limit: 3 })
+  assert.deepEqual(pipeline[4], { $project: { features: 0, _rank: 0 } })
+  const all = [...events, { ...events[0], _id: "x|null-p", p_real_loss: null, litres: 50 }, { ...events[1], _id: "x|negative", litres: -5 }]
+  const inMongo = all
+    .map((e) => ({ id: e._id, rank: evalExpr(pipeline[1].$addFields._rank, e), start: Date.parse(e.start) }))
+    .sort((a, b) => b.rank - a.rank || a.start - b.start)
+    .map((e) => e.id)
+  assert.deepEqual(inMongo, rankEvents(all).map((e) => e._id))
 })

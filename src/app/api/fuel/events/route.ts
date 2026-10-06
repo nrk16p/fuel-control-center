@@ -1,13 +1,10 @@
 import type { Filter } from "mongodb"
 import { NextResponse } from "next/server"
 import { analytics, fixturesOn } from "@/lib/fuel-db"
-import { buildEventsQuery, matchesFilter, parseEventFilter, rankEvents } from "@/lib/fuel-events"
+import { buildEventsPipeline, buildEventsQuery, matchesFilter, parseEventFilter, rankEvents } from "@/lib/fuel-events"
 import { FIXTURE_EVENTS } from "@/lib/fuel-fixtures"
 import type { FuelEventDoc } from "@/lib/fuel-types"
 import { yesterdayKey } from "@/lib/thai-time"
-
-// เดือนหนึ่งมีราว 1,000 เหตุการณ์ — ดึงมาเรียงในหน่วยความจำได้สบาย
-const FETCH_CAP = 2000
 
 export async function GET(request: Request) {
   const parsed = parseEventFilter(new URL(request.url).searchParams, yesterdayKey(Date.now()))
@@ -16,20 +13,16 @@ export async function GET(request: Request) {
   try {
     if (fixturesOn()) {
       const ranked = rankEvents(FIXTURE_EVENTS.filter((e) => matchesFilter(e, filter)))
-      return NextResponse.json({ filter, total: ranked.length, truncated: false, events: ranked.slice(0, filter.limit) })
+      const events = ranked.slice(0, filter.limit)
+      return NextResponse.json({ filter, total: ranked.length, truncated: ranked.length > events.length, events })
     }
-    const docs = await (await analytics())
-      .collection<FuelEventDoc>("fuel_events")
-      .find(buildEventsQuery(filter) as Filter<FuelEventDoc>, { projection: { features: 0 } })
-      .limit(FETCH_CAP)
-      .toArray()
-    const ranked = rankEvents(docs)
-    return NextResponse.json({
-      filter,
-      total: ranked.length,
-      truncated: ranked.length >= FETCH_CAP,
-      events: ranked.slice(0, filter.limit),
-    })
+    // เรียงทั้งช่วงใน Mongo แล้วค่อยตัด (วันหนึ่งเกือบพันเหตุการณ์) + นับทั้งหมดไว้บอก "แสดง X จาก Y"
+    const col = (await analytics()).collection<FuelEventDoc>("fuel_events")
+    const [events, total] = await Promise.all([
+      col.aggregate<FuelEventDoc>(buildEventsPipeline(filter)).toArray(),
+      col.countDocuments(buildEventsQuery(filter) as Filter<FuelEventDoc>),
+    ])
+    return NextResponse.json({ filter, total, truncated: total > events.length, events })
   } catch (err) {
     console.error("FUEL EVENTS ERROR:", err)
     return NextResponse.json({ error: "โหลดเหตุการณ์ไม่สำเร็จ" }, { status: 500 })

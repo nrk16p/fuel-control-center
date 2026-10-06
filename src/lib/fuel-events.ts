@@ -118,6 +118,20 @@ export function rankEvents<T extends Rankable>(events: T[]): T[] {
   return [...events].sort((a, b) => rankKey(b) - rankKey(a) || new Date(a.start).getTime() - new Date(b.start).getTime())
 }
 
+/** rankKey ในรูป expression ของ Mongo */
+const RANK_EXPR = { $multiply: [{ $ifNull: ["$p_real_loss", 0] }, { $max: [{ $ifNull: ["$litres", 0] }, 0] }] }
+
+/** คิวจาก fuel_events: เรียงทั้งช่วงในฐานข้อมูลก่อนตัดเหลือ limit (ลำดับเดียวกับ rankEvents) — วันหนึ่งมีเกือบพันเหตุการณ์ */
+export function buildEventsPipeline(filter: EventFilter): Record<string, unknown>[] {
+  return [
+    { $match: buildEventsQuery(filter) },
+    { $addFields: { _rank: RANK_EXPR } },
+    { $sort: { _rank: -1, start: 1 } },
+    { $limit: filter.limit },
+    { $project: { features: 0, _rank: 0 } },
+  ]
+}
+
 /** /api/fuel/events?… — ข้ามค่าว่าง */
 export function eventsUrl(input: Record<string, string | number | null | undefined>): string {
   const params = new URLSearchParams()
