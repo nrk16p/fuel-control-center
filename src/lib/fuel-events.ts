@@ -2,7 +2,7 @@
 // การเลื่อนไปเหตุการณ์ถัดไป และหลักฐานที่แสดงในแผงรายละเอียด
 // รันใต้ `node --test` ได้: TypeScript แบบ erasable เท่านั้น และ import ได้แค่ type
 
-import type { EventClass, EventStatus, FuelEvent, Source } from "./fuel-types"
+import type { DailySummary, EventClass, EventStatus, FuelEvent, Source } from "./fuel-types"
 
 export const STATUS_FILTERS = ["waiting", "decided", "follow_up", "auto_closed", "audit", "all"] as const
 export type StatusFilter = (typeof STATUS_FILTERS)[number]
@@ -137,6 +137,28 @@ export function buildEventsPipeline(filter: EventFilter): Record<string, unknown
     { $limit: filter.limit },
     { $project: { features: 0, _rank: 0 } },
   ]
+}
+
+const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0)
+const list = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+
+/** การ์ดเช้านี้: สรุปจากงานกลางคืนที่ขาดบางฟิลด์ยังแสดงได้ — ตัวเลขที่ไม่มีเป็น 0, รายการที่ไม่มีเป็นว่าง */
+export function summaryWithDefaults(raw: Partial<DailySummary> & { _id: string }): DailySummary {
+  const byStatus = raw.by_status
+  return {
+    ...raw,
+    trucks_expected: num(raw.trucks_expected),
+    trucks_analysed: num(raw.trucks_analysed),
+    by_status: byStatus && typeof byStatus === "object" ? byStatus : {},
+    events: num(raw.events),
+    auto_closed: num(raw.auto_closed),
+    open: num(raw.open),
+    audit: num(raw.audit),
+    likely_litres: num(raw.likely_litres),
+    check_first: list<string>(raw.check_first),
+    sources_missing: list<Source>(raw.sources_missing),
+    ai_text: typeof raw.ai_text === "string" ? raw.ai_text : null,
+  }
 }
 
 /** หัวรายการคิว — บอก "แสดง X จาก Y" เมื่อรายการถูกตัดที่ limit */

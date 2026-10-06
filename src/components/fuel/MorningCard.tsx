@@ -1,3 +1,4 @@
+import { summaryWithDefaults } from "@/lib/fuel-events"
 import type { DailySummary, FuelEvent } from "@/lib/fuel-types"
 import { fmtDateKey, fmtThaiTime } from "@/lib/thai-time"
 import { CLASS_LABEL, SOURCE_LABEL } from "./labels"
@@ -11,17 +12,19 @@ type Props = {
 }
 
 /** การ์ดเช้านี้ (spec §5.1) — ไม่แสดง ai_text */
-export function MorningCard({ date, summary, checkFirst, loading, onOpen }: Props) {
-  if (!date || (loading && !summary)) {
+export function MorningCard({ date, summary: raw, checkFirst, loading, onOpen }: Props) {
+  if (!date || (loading && !raw)) {
     return <section className="h-[132px] animate-pulse rounded-[22px] border border-line bg-surface" aria-busy />
   }
-  if (!summary) {
+  if (!raw) {
     return (
       <section className="rounded-[22px] border border-line bg-surface p-5 text-[14px] text-muted-ink">
         ยังไม่มีสรุปของวันที่ {fmtDateKey(date)} — งานคำนวณกลางคืนอาจยังไม่เสร็จ
       </section>
     )
   }
+  // งานกลางคืนอาจเขียนสรุปไม่ครบ — ห้ามพังทั้งแท็บ
+  const summary = summaryWithDefaults(raw)
   const noData = (summary.by_status.no_data ?? 0) + (summary.by_status.offline ?? 0)
   const stats: [string, string][] = [
     ["วิเคราะห์ได้", `${summary.trucks_analysed} คัน`],

@@ -4,7 +4,7 @@ import { test } from "node:test"
 
 import {
   MAX_LIMIT, buildEventsPipeline, buildEventsQuery, eventPath, eventsUrl, evidenceRows, listCaption, matchesFilter, neighbourId,
-  nextLimit, nextWaitingId, parseEventFilter, rankEvents, rankKey,
+  nextLimit, nextWaitingId, parseEventFilter, rankEvents, rankKey, summaryWithDefaults,
 } from "./fuel-events.ts"
 
 const events = JSON.parse(readFileSync(new URL("./__fixtures__/fuel-events-sample.json", import.meta.url), "utf8"))
@@ -156,4 +156,18 @@ test("follow-up decisions have their own filter so they do not vanish among deci
   assert.equal(matchesFilter(followUp, r.value), true)
   assert.equal(matchesFilter(legit, r.value), false)
   assert.equal(matchesFilter(followUp, parse("status=decided").value), true)
+})
+
+test("a partial nightly summary still renders: missing numbers are 0, missing lists are empty", () => {
+  assert.deepEqual(summaryWithDefaults({ _id: "2026-10-05", events: 3 }), {
+    _id: "2026-10-05", trucks_expected: 0, trucks_analysed: 0, by_status: {}, events: 3, auto_closed: 0,
+    open: 0, audit: 0, likely_litres: 0, check_first: [], sources_missing: [], ai_text: null,
+  })
+  const full = JSON.parse(readFileSync(new URL("./__fixtures__/fuel-summary-sample.json", import.meta.url), "utf8"))
+  assert.deepEqual(summaryWithDefaults(full), full)
+  const odd = summaryWithDefaults({ _id: "2026-10-05", open: "7", by_status: null, sources_missing: "besttech", likely_litres: NaN })
+  assert.equal(odd.open, 0)
+  assert.deepEqual(odd.by_status, {})
+  assert.deepEqual(odd.sources_missing, [])
+  assert.equal(odd.likely_litres, 0)
 })
