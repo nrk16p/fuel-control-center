@@ -107,3 +107,23 @@ export function keyAction(key: string, inTextField: boolean): KeyAction | null {
       return null
   }
 }
+
+/** คำตัดสินใหม่ → คำเดิม ให้หน้าเก่า (/dashboard, หน้าแรก, หน้า legacy) นับต่อได้ — เอกสารเดิมคืนค่าเดิม */
+export const LEGACY_DECISION: Record<Decision, string> = {
+  real_loss: "reviewed_suspicious",
+  noise: "false_positive",
+  legit: "reviewed_ok",
+  follow_up: "need_follow_up",
+}
+
+export function legacyDecision(decision: unknown): unknown {
+  return typeof decision === "string" && Object.hasOwn(LEGACY_DECISION, decision)
+    ? LEGACY_DECISION[decision as Decision]
+    : decision
+}
+
+/** รีวิวสำหรับ API ของหน้าเก่า: decision เป็นคำเดิม, คำใหม่เก็บไว้ที่ decision_new */
+export function withLegacyDecision<T extends Record<string, unknown>>(doc: T): T {
+  const legacy = legacyDecision(doc.decision)
+  return legacy === doc.decision ? doc : { ...doc, decision: legacy, decision_new: doc.decision }
+}

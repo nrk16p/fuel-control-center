@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import clientPromise from "@/lib/mongodb"
+import { withLegacyDecision } from "@/lib/fuel-decision"
 
 
 export async function GET(request: Request) {
@@ -57,7 +58,8 @@ export async function GET(request: Request) {
       .sort({ created_at: -1 })
       .toArray()
 
-    return NextResponse.json(data)
+    // รีวิวจากหน้าใหม่ใช้คำตัดสินชุดใหม่ — แปลงเป็นคำเดิมให้กราฟ/ตัวนับของแดชบอร์ดนับต่อได้
+    return NextResponse.json(data.map(withLegacyDecision))
   } catch (error) {
     console.error("❌ GET fuel detection error:", error)
     return NextResponse.json(

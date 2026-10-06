@@ -2,7 +2,9 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
 
-import { DECISIONS, buildReviewDoc, keyAction, legacyPlate, validateDecision } from "./fuel-decision.ts"
+import {
+  DECISIONS, buildReviewDoc, keyAction, legacyDecision, legacyPlate, validateDecision, withLegacyDecision,
+} from "./fuel-decision.ts"
 
 const events = JSON.parse(readFileSync(new URL("./__fixtures__/fuel-events-sample.json", import.meta.url), "utf8"))
 const byPlate = (plate) => events.find((e) => e.plate === plate)
@@ -74,4 +76,18 @@ test("keyboard map", () => {
   assert.equal(keyAction("1", true), null)
   assert.equal(keyAction("toString", false), null)
   assert.equal(keyAction("x", false), null)
+})
+
+test("new decisions read as the old words on the old pages", () => {
+  assert.equal(legacyDecision("real_loss"), "reviewed_suspicious")
+  assert.equal(legacyDecision("noise"), "false_positive")
+  assert.equal(legacyDecision("legit"), "reviewed_ok")
+  assert.equal(legacyDecision("follow_up"), "need_follow_up")
+  assert.equal(legacyDecision("reviewed_ok"), "reviewed_ok")
+  assert.equal(legacyDecision("toString"), "toString")
+  assert.equal(legacyDecision(undefined), undefined)
+  assert.deepEqual(withLegacyDecision({ _id: 1, decision: "real_loss" }),
+    { _id: 1, decision: "reviewed_suspicious", decision_new: "real_loss" })
+  const old = { _id: 2, decision: "reviewed_ok" }
+  assert.equal(withLegacyDecision(old), old)
 })

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { withLegacyDecision } from "@/lib/fuel-decision"
 import clientPromise from "@/lib/mongodb"
 
 type Decision =
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
     const client = await clientPromise
     const db = client.db("analytics")
 
-    const q: any = {}
+    const q: Record<string, unknown> = {}
     if (plate) q.plate = plate
 
     // 🔎 Filter by DB timestamps only (Accuracy)
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
       .limit(500)
       .toArray()
 
-    return NextResponse.json(rows)
+    return NextResponse.json(rows.map(withLegacyDecision))
   } catch (err) {
     console.error("FUEL REVIEWS GET ERROR:", err)
     return NextResponse.json(
