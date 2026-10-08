@@ -1,0 +1,112 @@
+[
+ {
+  "plate": "สบ.71-8635",
+  "date_key": "2026-10-05",
+  "date": "2026-10-04T17:00:00.000Z",
+  "source": "besttech",
+  "fuel_unit": "cpct",
+  "tank_l": 200.0,
+  "n": 6,
+  "coverage": {
+   "status": "ok",
+   "minutes": 6,
+   "last": "03:01"
+  },
+  "cols": {
+   "m": "eAB5AJYAlwC0ALUA",
+   "fuel": "cBdmFzARHBEcEf//",
+   "fuel_lo": "XBdcFyYREhESEf//",
+   "fuel_hi": "ehdwFzoRJhEmEf//",
+   "speed": "AAAAAAAA",
+   "engine": "AAAAAAAA",
+   "lat": "+AwVAPgMFQD4DBUA+AwVAPgMFQAAAAAA",
+   "lng": "JXCZACVwmQAlcJkAJXCZACVwmQAAAAAA"
+  }
+ },
+ {
+  "plate": "สบ.71-8635",
+  "date_key": "2026-10-05",
+  "date": "2026-10-04T17:00:00.000Z",
+  "source": "terminus",
+  "fuel_unit": "dl",
+  "tank_l": 200.0,
+  "n": 2,
+  "coverage": {
+   "status": "ok",
+   "minutes": 2,
+   "last": "02:40"
+  },
+  "cols": {
+   "m": "ggCgAA==",
+   "fuel": "nARwAw==",
+   "fuel_lo": "nARwAw==",
+   "fuel_hi": "nARwAw==",
+   "speed": "AAA=",
+   "engine": "AQA=",
+   "lat": "/AwVAPwMFQA=",
+   "lng": "KHCZAChwmQA="
+  }
+ },
+ {
+  "plate": "สบ.71-8635",
+  "date_key": "2026-10-06",
+  "date": "2026-10-05T17:00:00.000Z",
+  "source": "besttech",
+  "fuel_unit": "cpct",
+  "tank_l": 200.0,
+  "n": 2,
+  "coverage": {
+   "status": "ok",
+   "minutes": 2,
+   "last": "00:01"
+  },
+  "cols": {
+   "m": "AAABAA==",
+   "fuel": "EhENEQ==",
+   "fuel_lo": "CBEDEQ==",
+   "fuel_hi": "HBEXEQ==",
+   "speed": "DB4=",
+   "engine": "AQE=",
+   "lat": "EA0VAHQNFQA=",
+   "lng": "eHCZANxwmQA="
+  }
+ },
+ {
+  "plate": "สบ.71-8623",
+  "date_key": "2026-10-05",
+  "date": "2026-10-04T17:00:00.000Z",
+  "source": "besttech",
+  "fuel_unit": "cpct",
+  "tank_l": 200.0,
+  "n": 0,
+  "coverage": {
+   "status": "offline",
+   "minutes": 0,
+   "last": null
+  }
+ },
+ {
+  "plate": "สบ.71-8623",
+  "date_key": "2026-10-04",
+  "date": "2026-10-03T17:00:00.000Z",
+  "source": "besttech",
+  "fuel_unit": "cpct",
+  "tank_l": 200.0,
+  "n": 2,
+  "coverage": {
+   "status": "ok",
+   "minutes": 2,
+   "last": "10:01"
+  },
+  "cols": {
+   "m": "WAJZAg==",
+   "fuel": "iBN+Ew==",
+   "fuel_lo": "fhN0Ew==",
+   "fuel_hi": "khOIEw==",
+   "speed": "AAA=",
+   "engine": "AAA=",
+   "lat": "oA4VAKAOFQA=",
+   "lng": "4ICZAOCAmQA="
+  }
+ }
+]

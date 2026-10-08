@@ -223,32 +223,8 @@ export function detectFuelEvents(
   return events.sort((x, y) => x.startTs - y.startTs)
 }
 
-/* ---------- เวลาไทย (UTC+7) สำหรับแสดงผล ---------- */
-
-const TH_OFFSET = 7 * 60 * MIN
-const pad = (n: number) => String(n).padStart(2, "0")
-const TH_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
-
-/** ชั่วโมงในเวลาไทย (0–23.99) */
-export const thaiHour = (ts: number) => (((ts + TH_OFFSET) % (24 * 60 * MIN)) + 24 * 60 * MIN) % (24 * 60 * MIN) / (60 * MIN)
-
-export const fmtThaiTime = (ts: number) => {
-  const d = new Date(ts + TH_OFFSET)
-  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
-}
-
-export const fmtThaiDay = (ts: number) => {
-  const d = new Date(ts + TH_OFFSET)
-  return `${d.getUTCDate()} ${TH_MONTHS[d.getUTCMonth()]}`
-}
-
-export const fmtThaiDateTime = (ts: number) => `${fmtThaiDay(ts)} ${fmtThaiTime(ts)}`
-
-/** เที่ยงคืนเวลาไทยของวันที่ ts อยู่ */
-export const thaiMidnight = (ts: number) => {
-  const day = 24 * 60 * MIN
-  return Math.floor((ts + TH_OFFSET) / day) * day - TH_OFFSET
-}
+/* ---------- เวลาไทย (UTC+7) สำหรับแสดงผล — ย้ายไป src/lib/thai-time.ts ---------- */
+export { fmtThaiDateTime, fmtThaiDay, fmtThaiTime, thaiHour, thaiMidnight } from "./thai-time"
 
 /** หา index ของจุดที่ ts ใกล้ที่สุด (points เรียงตามเวลา) */
 export function nearestIndex(tsList: number[], ts: number) {

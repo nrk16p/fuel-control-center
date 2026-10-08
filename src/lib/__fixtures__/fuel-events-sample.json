@@ -1,0 +1,86 @@
+[
+  {
+    "_id": "สบ.71-8635|2026-10-05T02:10", "plate": "สบ.71-8635", "truck_code": "ME152", "driver": "คนขับ A",
+    "fleet": "Asia", "branch": "ลาดกระบัง", "plant": "พะเยา", "date_key": "2026-10-05",
+    "start": "2026-10-04T19:10:00.000Z", "end": "2026-10-04T19:35:00.000Z", "sources": ["besttech", "terminus"],
+    "kind": "drop", "class": "suspected_loss", "litres": 32.4, "pct_tank": 16.2, "score": 87, "p_real_loss": 0.87,
+    "suggestion": "real_loss", "confidence": 0.87,
+    "reasons": ["จอดดับเครื่อง", "2 ชม. ต่อมาระดับไม่กลับขึ้น", "ไม่ได้อยู่ในแพลนท์/อู่", "กลางคืน"],
+    "action": "เทียบใบเติมน้ำมัน + สอบถามคนขับ",
+    "features": { "level_before": 120.0, "level_after": 87.6, "duration_min": 25, "engine_off_share": 1, "recovered_120": false, "night": true, "at_place": false, "both_boxes": true },
+    "place": { "name": null, "lat": 13.79576, "lng": 100.55717 },
+    "status": "open", "decision": null, "review_id": null, "scorer": "rules-v1", "stale": false
+  },
+  {
+    "_id": "สบ.70-6303|2026-10-05T14:05", "plate": "สบ.70-6303", "truck_code": "ME148", "driver": null,
+    "fleet": "Asia", "branch": "ลาดกระบัง", "plant": null, "date_key": "2026-10-05",
+    "start": "2026-10-05T07:05:00.000Z", "end": "2026-10-05T07:50:00.000Z", "sources": ["besttech"],
+    "kind": "gap", "class": "gap_loss", "litres": 18.0, "pct_tank": 9.0, "score": 62, "p_real_loss": 0.62,
+    "suggestion": "real_loss", "confidence": 0.62,
+    "reasons": ["กล่อง GPS ขาดสัญญาณ 45 นาที", "ระดับหลังสัญญาณกลับต่ำกว่าเดิม 18 L"],
+    "action": "ตรวจกล่อง GPS/สายไฟ ว่าถูกตัดไฟหรือไม่",
+    "features": { "gap_min": 45, "level_before": 140.0, "level_after": 122.0 },
+    "place": null,
+    "status": "open", "decision": null, "review_id": null, "scorer": "rules-v1", "stale": false
+  },
+  {
+    "_id": "สบ.72-8334|2026-10-05T09:40", "plate": "สบ.72-8334", "truck_code": "ME212", "driver": null,
+    "fleet": "Asia", "branch": "ลาดกระบัง", "plant": "พะเยา", "date_key": "2026-10-05",
+    "start": "2026-10-05T02:40:00.000Z", "end": "2026-10-05T02:52:00.000Z", "sources": ["besttech"],
+    "kind": "drop", "class": "noise", "litres": 9.5, "pct_tank": 4.8, "score": 0, "p_real_loss": 0.03,
+    "suggestion": "noise", "confidence": 0.97,
+    "reasons": ["ระดับกลับขึ้นภายใน 30 นาที", "เกิดระหว่างรถวิ่ง"],
+    "action": null,
+    "features": { "recovered_30": true },
+    "place": null,
+    "status": "audit", "decision": null, "review_id": null, "scorer": "rules-v1", "stale": false
+  },
+  {
+    "_id": "สบ.71-7463|2026-10-05T11:20", "plate": "สบ.71-7463", "truck_code": "ME081", "driver": null,
+    "fleet": "Asia", "branch": "ลาดกระบัง", "plant": null, "date_key": "2026-10-05",
+    "start": "2026-10-05T04:20:00.000Z", "end": "2026-10-05T04:31:00.000Z", "sources": ["besttech"],
+    "kind": "refuel", "class": "refuel", "litres": 80.0, "pct_tank": 40.0, "score": 0, "p_real_loss": 0.0,
+    "suggestion": "legit", "confidence": 1.0,
+    "reasons": ["เพิ่มขึ้น 80 L และคงอยู่"],
+    "action": null,
+    "features": {},
+    "place": null,
+    "status": "decided", "decision": "legit", "review_id": "6701a0000000000000000001", "scorer": "rules-v1", "stale": false
+  },
+  {
+    "_id": "สบ.71-8622|2026-10-04T23:15", "plate": "สบ.71-8622", "truck_code": "ME160", "driver": "คนขับ B",
+    "fleet": "Asia", "branch": "ลาดกระบัง", "plant": "บางนา", "date_key": "2026-10-04",
+    "start": "2026-10-04T16:15:00.000Z", "end": "2026-10-04T16:50:00.000Z", "sources": ["besttech"],
+    "kind": "drop", "class": "suspected_loss", "litres": 41.0, "pct_tank": 20.5, "score": 91, "p_real_loss": 0.91,
+    "suggestion": "real_loss", "confidence": 0.91,
+    "reasons": ["จอดดับเครื่อง", "กลางคืน"],
+    "action": "เทียบใบเติมน้ำมัน + สอบถามคนขับ",
+    "features": { "level_before": 150.0, "level_after": 109.0 },
+    "place": { "name": "ลานจอดริมถนน", "lat": 13.7, "lng": 100.6 },
+    "status": "decided", "decision": "real_loss", "review_id": "6701a0000000000000000002", "scorer": "rules-v1", "stale": false
+  },
+  {
+    "_id": "สบ.72-9520|2026-10-05T16:00", "plate": "สบ.72-9520", "truck_code": null, "driver": null,
+    "fleet": null, "branch": null, "plant": null, "date_key": "2026-10-05",
+    "start": "2026-10-05T09:00:00.000Z", "end": "2026-10-05T09:06:00.000Z", "sources": ["terminus"],
+    "kind": "drop", "class": "noise", "litres": 6.0, "pct_tank": 7.5, "score": 0, "p_real_loss": 0.01,
+    "suggestion": "noise", "confidence": 0.99,
+    "reasons": ["กระโดดค่าเดียวแล้วกลับ"],
+    "action": null,
+    "place": null,
+    "status": "auto_closed", "decision": null, "review_id": null, "scorer": "rules-v1", "stale": false
+  },
+  {
+    "_id": "สบ.71-5208|2026-10-05T09:30", "plate": "สบ.71-5208", "truck_code": "ME201", "driver": null,
+    "fleet": "Asia", "branch": "สระบุรี", "plant": "ท่าลาน", "date_key": "2026-10-05",
+    "start": "2026-10-05T02:30:00.000Z", "end": "2026-10-05T03:10:00.000Z",
+    "sources": ["besttech"], "kind": "drop", "class": "place_drop",
+    "litres": 45, "pct_tank": 22.5, "score": 30, "p_real_loss": 0.2,
+    "suggestion": "noise", "confidence": 0.8,
+    "reasons": ["ระดับลดลงแล้วค้างระหว่างจอดที่แพลนท์ 40 นาที", "จุดนี้พบการลดแบบเดียวกันบ่อย"],
+    "action": "เทียบใบเติม/ใบเบิกน้ำมันของแพลนท์ ถ้าตรงกันปิดเป็นสัญญาณรบกวน",
+    "features": { "level_before": 160, "level_after": 115, "duration_min": 40, "engine_off_share": 0.9, "at_place": true },
+    "place": { "name": "แพลนท์ท่าลาน", "lat": 14.53, "lng": 100.91 },
+    "status": "open", "decision": null, "review_id": null, "scorer": "rules-v1", "stale": false
+  }
+]

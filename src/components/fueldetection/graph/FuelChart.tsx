@@ -35,18 +35,29 @@ ChartJS.register(
 
 export type FocusRange = { min: number; max: number; key: number }
 
+type Values = (number | null)[]
+
 interface Props {
   ts: number[]
-  raw: number[]
-  smooth: number[]
+  /** เส้นหลัก (ลิตร) — null = ไม่มีค่า กราฟเว้นช่วง ไม่ใช่ศูนย์ */
+  smooth: Values
+  /** ค่าดิบรายจุด (หน้าเดิม) */
+  raw?: Values
+  /** ต่ำสุด/สูงสุดในแต่ละนาที (gps_series) → แถบสัญญาณรบกวน */
+  lo?: Values
+  hi?: Values
   speed: number[]
   status: string[]
   overlay: Omit<FuelOverlay, "ts" | "status">
   focus: FocusRange | null
-  onSelectIndex: (idx: number) => void
+  onSelectIndex?: (idx: number) => void
+  title?: string
+  subtitle?: string
+  smoothLabel?: string
+  height?: number
 }
 
-type Pt = { x: number; y: number }
+type Pt = { x: number; y: number | null }
 type FuelChartJS = ChartJS<"line", Pt[]> & { $fuelOverlay?: FuelOverlay }
 
 const MIN = 60_000
@@ -54,32 +65,41 @@ const HOUR = 60 * MIN
 // ระยะห่างของ tick แกนเวลา — เลือกอันแรกที่ทำให้มี ≤ 12 tick
 const TICK_STEPS = [15 * MIN, 30 * MIN, HOUR, 2 * HOUR, 3 * HOUR, 6 * HOUR, 12 * HOUR, 24 * HOUR]
 
-const LEGEND = [
-  { label: "น้ำมัน (เฉลี่ย ตัดการกระฉอก)", swatch: "h-[3px] w-[18px] rounded bg-forest" },
-  { label: "ค่าดิบจากเซนเซอร์", swatch: "h-[2px] w-[18px] bg-[#9DB5A6]" },
-  { label: "ความเร็ว", swatch: "h-2.5 w-3.5 rounded-sm bg-[#C9D6CC]" },
-  { label: "จุดน่าสงสัยที่ระบบพบ", swatch: "h-3.5 w-3.5 rounded-full bg-clay" },
-  { label: "รถวิ่ง", swatch: "h-2 w-3.5 rounded-sm bg-forest" },
-  { label: "จอดรถ", swatch: "h-2 w-3.5 rounded-sm bg-butter" },
-  { label: "ดับเครื่อง", swatch: "h-2 w-3.5 rounded-sm bg-[#B9B3A3]" },
-  { label: "กลางคืน 18:00–06:00", swatch: "h-2 w-3.5 rounded-sm bg-ink/10" },
-]
-
 const toggleClass = (on: boolean) =>
   `h-9 rounded-[12px] border border-line-input px-3 text-[13px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-forest ${
     on ? "bg-mint text-forest-dark" : "bg-surface text-muted-ink"
   }`
 
-export function FuelChart({ ts, raw, smooth, speed, status, overlay, focus, onSelectIndex }: Props) {
+const fmtL = (v: number | null | undefined) => (v == null ? "–" : v.toFixed(1))
+
+export function FuelChart({
+  ts,
+  smooth,
+  raw,
+  lo,
+  hi,
+  speed,
+  status,
+  overlay,
+  focus,
+  onSelectIndex,
+  title = "กราฟระดับน้ำมันและความเร็ว",
+  subtitle = "เลื่อนล้อเมาส์เพื่อซูม · ลากเพื่อเลื่อน · คลิก 2 จุดบนกราฟเพื่อเลือกช่วง",
+  smoothLabel = "น้ำมัน (เฉลี่ย ตัดการกระฉอก)",
+  height = 480,
+}: Props) {
   const chartRef = useRef<FuelChartJS | null>(null)
   const [showRaw, setShowRaw] = useState(true)
+  const [showBand, setShowBand] = useState(true)
   const [showSpeed, setShowSpeed] = useState(true)
+  const hasRaw = raw != null
+  const hasBand = lo != null && hi != null
 
   // ค่าที่ callback ของ Chart.js ต้องอ่าน — เก็บใน ref เพื่อให้ options คงที่ (options เปลี่ยน = zoom รีเซ็ต)
-  const live = useRef({ ts, raw, smooth, speed, status, onSelectIndex })
+  const live = useRef({ ts, raw, smooth, lo, hi, speed, status, onSelectIndex })
   useEffect(() => {
-    live.current = { ts, raw, smooth, speed, status, onSelectIndex }
-  }, [ts, raw, smooth, speed, status, onSelectIndex])
+    live.current = { ts, raw, smooth, lo, hi, speed, status, onSelectIndex }
+  }, [ts, raw, smooth, lo, hi, speed, status, onSelectIndex])
 
   // ส่ง overlay ให้ plugin แล้ววาดใหม่ (ไม่ update options)
   useEffect(() => {
@@ -97,54 +117,85 @@ export function FuelChart({ ts, raw, smooth, speed, status, overlay, focus, onSe
 
   const fuelMax = useMemo(() => {
     let m = 0
-    for (const v of raw) if (v > m) m = v
+    for (const values of [hi, raw, smooth]) {
+      if (!values) continue
+      for (const v of values) if (v != null && v > m) m = v
+    }
     return Math.ceil((m * 1.15) / 50) * 50 || 100
-  }, [raw])
+  }, [hi, raw, smooth])
 
-  const chartData: ChartData<"line", Pt[]> = useMemo(
-    () => ({
-      datasets: [
-        {
-          label: "น้ำมัน (เฉลี่ย)",
-          data: ts.map((x, i) => ({ x, y: smooth[i] })),
-          yAxisID: "y",
-          borderColor: OVERLAY_COLORS.forest,
-          backgroundColor: OVERLAY_COLORS.forest,
-          borderWidth: 2.4,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          tension: 0,
-          order: 1,
-        },
-        {
-          label: "ค่าดิบ",
-          data: ts.map((x, i) => ({ x, y: raw[i] })),
-          yAxisID: "y",
-          borderColor: "#9DB5A6",
-          borderWidth: 1.1,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          hidden: !showRaw,
-          order: 2,
-        },
-        {
-          label: "ความเร็ว",
-          data: ts.map((x, i) => ({ x, y: speed[i] })),
-          yAxisID: "y1",
-          borderColor: "transparent",
-          backgroundColor: "rgba(201,214,204,0.7)",
-          fill: "origin",
-          borderWidth: 0,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          stepped: true,
-          hidden: !showSpeed,
-          order: 3,
-        },
-      ],
-    }),
-    [ts, raw, smooth, speed, showRaw, showSpeed]
-  )
+  const chartData: ChartData<"line", Pt[]> = useMemo(() => {
+    const datasets: ChartData<"line", Pt[]>["datasets"] = [
+      {
+        label: "น้ำมัน",
+        data: ts.map((x, i) => ({ x, y: smooth[i] ?? null })),
+        yAxisID: "y",
+        borderColor: OVERLAY_COLORS.forest,
+        backgroundColor: OVERLAY_COLORS.forest,
+        borderWidth: 2.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0,
+        spanGaps: false,
+        order: 1,
+      },
+    ]
+    if (raw) {
+      datasets.push({
+        label: "ค่าดิบ",
+        data: ts.map((x, i) => ({ x, y: raw[i] ?? null })),
+        yAxisID: "y",
+        borderColor: "#9DB5A6",
+        borderWidth: 1.1,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        hidden: !showRaw,
+        order: 2,
+      })
+    }
+    datasets.push({
+      label: "ความเร็ว",
+      data: ts.map((x, i) => ({ x, y: speed[i] ?? null })),
+      yAxisID: "y1",
+      borderColor: "transparent",
+      backgroundColor: "rgba(201,214,204,0.7)",
+      fill: "origin",
+      borderWidth: 0,
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      stepped: true,
+      hidden: !showSpeed,
+      order: 3,
+    })
+    if (lo && hi) {
+      // แถบระหว่างต่ำสุด-สูงสุดในนาที: dataset สูงสุดเติมสีลงไปถึง dataset ถัดไป (ต่ำสุด)
+      datasets.push({
+        label: "สูงสุดในนาที",
+        data: ts.map((x, i) => ({ x, y: hi[i] ?? null })),
+        yAxisID: "y",
+        borderColor: "transparent",
+        backgroundColor: "rgba(157,181,166,0.35)",
+        fill: "+1",
+        borderWidth: 0,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        hidden: !showBand,
+        order: 4,
+      })
+      datasets.push({
+        label: "ต่ำสุดในนาที",
+        data: ts.map((x, i) => ({ x, y: lo[i] ?? null })),
+        yAxisID: "y",
+        borderColor: "transparent",
+        borderWidth: 0,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        hidden: !showBand,
+        order: 5,
+      })
+    }
+    return { datasets }
+  }, [ts, smooth, raw, lo, hi, speed, showRaw, showBand, showSpeed])
 
   // options คงที่ตลอดอายุ component — ข้อมูลที่เปลี่ยนอ่านผ่าน live ref / scale ที่คำนวณใหม่
   const chartOptions = useMemo<ChartOptions<"line">>(
@@ -158,13 +209,14 @@ export function FuelChart({ ts, raw, smooth, speed, status, overlay, focus, onSe
 
       onClick: (event: ChartEvent) => {
         const chart = chartRef.current
-        if (!chart || event.x == null) return
+        const select = live.current.onSelectIndex
+        if (!chart || !select || event.x == null) return
         const a = chart.chartArea
         if (event.x < a.left || event.x > a.right) return
         const value = chart.scales.x.getValueForPixel(event.x)
         if (value == null) return
         const idx = nearestIndex(live.current.ts, value)
-        if (idx >= 0) live.current.onSelectIndex(idx)
+        if (idx >= 0) select(idx)
       },
 
       plugins: {
@@ -190,12 +242,21 @@ export function FuelChart({ ts, raw, smooth, speed, status, overlay, focus, onSe
               const d = live.current
               const i = nearestIndex(d.ts, item.parsed.x ?? 0)
               if (i < 0) return ""
-              const delta = i > 0 ? d.smooth[i] - d.smooth[i - 1] : 0
-              return [
-                `น้ำมัน ${d.smooth[i].toFixed(1)} ล. (${delta >= 0 ? "+" : ""}${delta.toFixed(1)} จากจุดก่อน)`,
-                `ค่าดิบ ${d.raw[i].toFixed(1)} ล.`,
-                `ความเร็ว ${Math.round(d.speed[i])} กม./ชม. · ${d.status[i] || "ไม่ทราบสถานะ"}`,
+              const fuel = d.smooth[i]
+              const prev = i > 0 ? d.smooth[i - 1] : null
+              const delta = fuel != null && prev != null ? fuel - prev : null
+              const lines = [
+                fuel == null
+                  ? "น้ำมัน – (ไม่มีค่าในนาทีนี้)"
+                  : `น้ำมัน ${fuel.toFixed(1)} ล.${delta == null ? "" : ` (${delta >= 0 ? "+" : ""}${delta.toFixed(1)} จากจุดก่อน)`}`,
               ]
+              const rawValue = d.raw?.[i]
+              if (rawValue != null) lines.push(`ค่าดิบ ${rawValue.toFixed(1)} ล.`)
+              const low = d.lo?.[i]
+              const high = d.hi?.[i]
+              if (low != null && high != null && high - low >= 0.1) lines.push(`ช่วงในนาที ${fmtL(low)}–${fmtL(high)} ล.`)
+              lines.push(`ความเร็ว ${Math.round(d.speed[i] ?? 0)} กม./ชม. · ${d.status[i] || "ไม่ทราบสถานะ"}`)
+              return lines
             },
           },
         },
@@ -255,19 +316,36 @@ export function FuelChart({ ts, raw, smooth, speed, status, overlay, focus, onSe
     [fuelMax]
   )
 
+  const legend = [
+    { label: smoothLabel, swatch: "h-[3px] w-[18px] rounded bg-forest", show: true },
+    { label: "ค่าดิบจากเซนเซอร์", swatch: "h-[2px] w-[18px] bg-[#9DB5A6]", show: hasRaw },
+    { label: "ช่วงค่าดิบในแต่ละนาที", swatch: "h-2.5 w-3.5 rounded-sm bg-[#9DB5A6]/40", show: hasBand },
+    { label: "ความเร็ว", swatch: "h-2.5 w-3.5 rounded-sm bg-[#C9D6CC]", show: true },
+    { label: "จุดน่าสงสัยที่ระบบพบ", swatch: "h-3.5 w-3.5 rounded-full bg-clay", show: true },
+    { label: "รถวิ่ง", swatch: "h-2 w-3.5 rounded-sm bg-forest", show: true },
+    { label: "จอดรถ", swatch: "h-2 w-3.5 rounded-sm bg-butter", show: true },
+    { label: "ดับเครื่อง", swatch: "h-2 w-3.5 rounded-sm bg-[#B9B3A3]", show: true },
+    { label: "กลางคืน 18:00–06:00", swatch: "h-2 w-3.5 rounded-sm bg-ink/10", show: true },
+  ].filter((l) => l.show)
+
   return (
     <section className="rounded-[22px] border border-line bg-surface p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-ink">กราฟระดับน้ำมันและความเร็ว</h2>
-          <p className="text-[13px] text-muted-ink">
-            เลื่อนล้อเมาส์เพื่อซูม · ลากเพื่อเลื่อน · คลิก 2 จุดบนกราฟเพื่อเลือกช่วง
-          </p>
+          <h2 className="text-lg font-semibold text-ink">{title}</h2>
+          <p className="text-[13px] text-muted-ink">{subtitle}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" aria-pressed={showRaw} onClick={() => setShowRaw((v) => !v)} className={toggleClass(showRaw)}>
-            ค่าดิบจากเซนเซอร์
-          </button>
+          {hasRaw && (
+            <button type="button" aria-pressed={showRaw} onClick={() => setShowRaw((v) => !v)} className={toggleClass(showRaw)}>
+              ค่าดิบจากเซนเซอร์
+            </button>
+          )}
+          {hasBand && (
+            <button type="button" aria-pressed={showBand} onClick={() => setShowBand((v) => !v)} className={toggleClass(showBand)}>
+              ช่วงค่าดิบ
+            </button>
+          )}
           <button type="button" aria-pressed={showSpeed} onClick={() => setShowSpeed((v) => !v)} className={toggleClass(showSpeed)}>
             ความเร็ว
           </button>
@@ -282,7 +360,7 @@ export function FuelChart({ ts, raw, smooth, speed, status, overlay, focus, onSe
       </div>
 
       <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-body">
-        {LEGEND.map((l) => (
+        {legend.map((l) => (
           <span key={l.label} className="flex items-center gap-1.5">
             <span className={l.swatch} aria-hidden />
             {l.label}
@@ -290,13 +368,13 @@ export function FuelChart({ ts, raw, smooth, speed, status, overlay, focus, onSe
         ))}
       </div>
 
-      <div className="h-[480px]">
+      <div style={{ height }}>
         <Chart
           ref={chartRef as never}
           type="line"
           data={chartData}
           options={chartOptions}
-          aria-label="กราฟระดับน้ำมันและความเร็ว"
+          aria-label={title}
         />
       </div>
     </section>
