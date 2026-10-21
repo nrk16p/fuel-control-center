@@ -12,6 +12,8 @@ export interface Overspeed {
     max_speed: number,
     w_speed: number,
     speed_group: string
+    /** "besttech" = from Besttech points; missing = Terminus driving_log */
+    source?: string
     year: number,
     month: number
 

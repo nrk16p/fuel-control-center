@@ -69,6 +69,7 @@ export async function GET(request: Request) {
         max_speed: 1,
         w_speed: 1,
         speed_group: 1,
+        source: 1,
       })
       .sort({ start_datetime: -1, vehicle: 1 })
       .toArray()

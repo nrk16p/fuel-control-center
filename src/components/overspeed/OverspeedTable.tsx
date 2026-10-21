@@ -4,6 +4,7 @@ import React, { useEffect } from "react"
 import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Overspeed, SortKey } from "./types"
+import { providerByKey } from "@/lib/gps-provider"
 
 /* ================= Types ================= */
 
@@ -75,6 +76,7 @@ export function OverspeedTable({
         <thead className="bg-gray-100">
           <tr>
             <Th onClick={() => onSort("vehicle")}>ทะเบียน</Th>
+            <Th>GPS</Th>
             <Th onClick={() => onSort("start_datetime")}>วันที่เริ่ม</Th>
             <Th onClick={() => onSort("end_datetime")}>วันที่สิ้นสุด</Th>
 
@@ -98,6 +100,7 @@ export function OverspeedTable({
 
                 {/* Plate */}
                 <Td>{formatString(r.vehicle)}</Td>
+                <Td><GpsChip source={r.source} /></Td>
 
                 {/* Date */}
                 <Td>{formatDate(r.start_datetime)}</Td>
@@ -155,6 +158,16 @@ export function OverspeedTable({
 }
 
 /* ================= Helpers ================= */
+
+function GpsChip({ source }: { source?: string }) {
+  const p = providerByKey(source === "besttech" ? "besttech" : "terminus")
+  if (!p) return <span className="text-gray-300">-</span>
+  return (
+    <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${p.solid}`}>
+      {p.label}
+    </span>
+  )
+}
 
 function Th({ children, onClick, center }: ThProps) {
   return (

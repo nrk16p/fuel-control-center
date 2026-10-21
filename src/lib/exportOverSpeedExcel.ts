@@ -27,6 +27,7 @@ export function exportOverSpeedExcel (
     ปี:r.year,
     เดือน:r.month,
     ทะเบียน: r.vehicle,
+    GPS: r.source === "besttech" ? "Besttech" : "Terminus",
     วันที่เริ่มต้น: formatDate(r.start_datetime),
     วันที่สิ้นสุด: formatDate(r.end_datetime),
     "ระยะเวลา (นาที)": r.duration_minutes,
