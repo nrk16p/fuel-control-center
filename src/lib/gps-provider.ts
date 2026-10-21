@@ -89,16 +89,16 @@ export function providersOn(payload: ProviderPayload | null, plate: string, day:
 /** Latest day before `day` with GPS data, for the "ไม่มี GPS" tooltip. */
 export function lastSeenBefore(
   payload: ProviderPayload | null, plate: string, day: string,
-): { day: string; providers: ProviderDef[] } | null {
+): { day: string; provider: ProviderDef | null } | null {
   if (!payload) return null
   const key = plateKey(plate)
   let best: string | null = null
   for (const d of Object.keys(payload.days[key] ?? {})) {
     if (d < day && (best === null || d > best)) best = d
   }
-  if (best) return { day: best, providers: decode(payload.days[key][best]) }
+  if (best) return { day: best, provider: pickOne(decode(payload.days[key][best])) }
   const p = payload.prior[key]
-  return p ? { day: p[0], providers: decode(p[1]) } : null
+  return p ? { day: p[0], provider: pickOne(decode(p[1])) } : null
 }
 
 /** Which provider the engine-on minutes came from (summary_engineon.version_type). */
@@ -108,16 +108,26 @@ export function engineSource(versionType: string | null | undefined): ProviderKe
   return null
 }
 
-/** Providers for a summary row: who sent data that day, plus the source of its engine-on minutes
- *  (gps.distance_* can lag a day behind the engine-on pipeline). */
-export function rowProviders(
+/** When a truck has more than one box the same day, show this one (the engine-on source wins first). */
+const PICK_ORDER: ProviderKey[] = ["besttech", "terminus", "cartrack", "hino", "dtc", "songdee", "nostra", "thaitracking"]
+
+/** One provider out of several, by PICK_ORDER. */
+export function pickOne(list: ProviderDef[]): ProviderDef | null {
+  for (const key of PICK_ORDER) {
+    const hit = list.find((p) => p.key === key)
+    if (hit) return hit
+  }
+  return list[0] ?? null
+}
+
+/** The single GPS provider of a summary row: the source of its engine-on minutes when it has
+ *  any (gps.distance_* can lag a day), otherwise one of the providers that sent data that day. */
+export function rowProvider(
   payload: ProviderPayload | null, plate: string, day: string, versionType: string | null | undefined,
-): ProviderDef[] {
-  const list = providersOn(payload, plate, day)
+): ProviderDef | null {
   const src = engineSource(versionType)
-  if (!src || list.some((p) => p.key === src)) return list
-  const def = BY_KEY.get(src)
-  return def ? decode([...list.map((p) => p.code), def.code].sort(codeOrder).join("")) : list
+  if (src) return BY_KEY.get(src) ?? null
+  return pickOne(providersOn(payload, plate, day))
 }
 
 /** Month range for the page filters; whole year when month is "all". */

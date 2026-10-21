@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import {
-  buildPayload, engineSource, rowProviders, lastSeenBefore, plateKey, providersOn, rangeFor, thaiDate,
+  buildPayload, engineSource, pickOne, rowProvider, lastSeenBefore, plateKey, providersOn, rangeFor, thaiDate,
 } from "./gps-provider.ts"
 
 test("plateKey matches the summary plate to gps.distance_* vehicle_no", () => {
@@ -34,7 +34,7 @@ test("providersOn and lastSeenBefore", () => {
   assert.deepEqual(providersOn(p, "71-1515", "2026-10-01").map((x) => x.key), ["terminus", "besttech"])
   assert.deepEqual(providersOn(p, "71-2750", "2026-10-05"), [])
   assert.deepEqual(lastSeenBefore(p, "71-2750", "2026-10-05").day, "2026-09-29")
-  assert.equal(lastSeenBefore(p, "72-5712", "2026-10-10").providers[0].key, "hino")
+  assert.equal(lastSeenBefore(p, "72-5712", "2026-10-10").provider.key, "hino")
   assert.equal(lastSeenBefore(p, "72-5712", "2026-10-03"), null)
   assert.deepEqual(providersOn(null, "71-1515", "2026-10-01"), [])
 })
@@ -53,10 +53,15 @@ test("rangeFor and thaiDate", () => {
   assert.equal(thaiDate("2026-09-29"), "29/09/2569")
 })
 
-test("rowProviders adds the engine-on source when the distance table has no row yet", () => {
+test("rowProvider gives one provider per row", () => {
   const p = buildPayload("2026-10-01", "2026-10-31", rows)
-  assert.deepEqual(rowProviders(p, "70-6292", "2026-10-20", "v1").map((x) => x.key), ["terminus"])
-  assert.deepEqual(rowProviders(p, "71-1515", "2026-10-01", "besttech").map((x) => x.key), ["terminus", "besttech"])
-  assert.deepEqual(rowProviders(p, "71-2750", "2026-10-05", undefined), [])
-  assert.deepEqual(rowProviders(null, "70-6292", "2026-10-20", "v2").map((x) => x.key), ["terminus"])
+  // engine-on source wins, even when the distance table has no row yet
+  assert.equal(rowProvider(p, "70-6292", "2026-10-20", "v1").key, "terminus")
+  assert.equal(rowProvider(p, "71-1515", "2026-10-01", "v2").key, "terminus")
+  assert.equal(rowProvider(p, "71-1515", "2026-10-01", "besttech").key, "besttech")
+  // no engine-on: Terminus + Besttech that day -> Besttech
+  assert.equal(rowProvider(p, "71-1515", "2026-10-01", undefined).key, "besttech")
+  assert.equal(rowProvider(p, "71-2750", "2026-10-05", undefined), null)
+  assert.equal(rowProvider(null, "70-6292", "2026-10-20", "v2").key, "terminus")
+  assert.equal(pickOne([]), null)
 })

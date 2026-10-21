@@ -5,7 +5,7 @@ import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { EngineTripSummary, SortKey } from "./types"
 import {
-  dayKey, engineSource, lastSeenBefore, rowProviders, thaiDate, type ProviderPayload,
+  dayKey, engineSource, lastSeenBefore, rowProvider, thaiDate, type ProviderPayload,
 } from "@/lib/gps-provider"
 
 /* ================= Types ================= */
@@ -256,13 +256,12 @@ export function EngineOnTable({
 function GpsCell({ row, gps, loading }: { row: EngineTripSummary; gps: ProviderPayload | null; loading: boolean }) {
   if (!gps) return <span className="text-gray-300">{loading ? "…" : "-"}</span>
   const day = dayKey(row.Date)
-  const list = rowProviders(gps, row.TruckPlateNo, day, row.version_type)
-  const source = engineSource(row.version_type)
+  const provider = rowProvider(gps, row.TruckPlateNo, day, row.version_type)
 
-  if (list.length === 0) {
+  if (!provider) {
     const last = lastSeenBefore(gps, row.TruckPlateNo, day)
-    const title = last
-      ? `ไม่มีข้อมูล GPS วันนี้ · ล่าสุด ${last.providers.map((p) => p.label).join(" + ")} ${thaiDate(last.day)}`
+    const title = last?.provider
+      ? `ไม่มีข้อมูล GPS วันนี้ · ล่าสุด ${last.provider.label} ${thaiDate(last.day)}`
       : "ไม่พบข้อมูล GPS ของรถคันนี้"
     return (
       <span title={title} className="inline-block cursor-help rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-400 whitespace-nowrap">
@@ -271,21 +270,14 @@ function GpsCell({ row, gps, loading }: { row: EngineTripSummary; gps: ProviderP
     )
   }
 
+  const used = provider.key === engineSource(row.version_type)
   return (
-    <div className="flex flex-wrap gap-1">
-      {list.map((p) => {
-        const used = p.key === source
-        return (
-          <span
-            key={p.key}
-            title={used ? `ชั่วโมงติดเครื่องคิดจาก ${p.label}` : `${p.label} มีข้อมูลวันนี้`}
-            className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${used ? p.solid : p.chip}`}
-          >
-            {p.label}
-          </span>
-        )
-      })}
-    </div>
+    <span
+      title={used ? `ชั่วโมงติดเครื่องคิดจาก ${provider.label}` : `${provider.label} มีข้อมูลวันนี้`}
+      className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${used ? provider.solid : provider.chip}`}
+    >
+      {provider.label}
+    </span>
   )
 }
 

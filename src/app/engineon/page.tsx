@@ -5,7 +5,7 @@ import { EngineOnTable } from "@/components/engineon/EngineOnTable"
 import { EngineOnFilters } from "@/components/engineon/EngineOnFilters"
 import type { EngineTripSummary, SortKey } from "@/components/engineon/types"
 import { exportEngineOnExcel } from "@/lib/exportEngineOnExcel"
-import { dayKey, rangeFor, rowProviders, type ProviderPayload } from "@/lib/gps-provider"
+import { dayKey, rangeFor, rowProvider, type ProviderPayload } from "@/lib/gps-provider"
 
 /* -------------------------------------------------
    🔹 Current month / year (DEFAULT)
@@ -120,8 +120,8 @@ export default function EngineOnPage() {
 
     if (gps !== "all" && gpsData) {
       temp = temp.filter((d) => {
-        const list = rowProviders(gpsData, d.TruckPlateNo, dayKey(d.Date), d.version_type)
-        return gps === "none" ? list.length === 0 : list.some((p) => p.key === gps)
+        const one = rowProvider(gpsData, d.TruckPlateNo, dayKey(d.Date), d.version_type)
+        return gps === "none" ? one === null : one?.key === gps
       })
     }
 
@@ -196,7 +196,7 @@ export default function EngineOnPage() {
         month !== "all" ? month : "all"
       }.xlsx`,
       gpsData
-        ? (r) => rowProviders(gpsData, r.TruckPlateNo, dayKey(r.Date), r.version_type).map((p) => p.label).join(" + ") || "ไม่มี GPS"
+        ? (r) => rowProvider(gpsData, r.TruckPlateNo, dayKey(r.Date), r.version_type)?.label ?? "ไม่มี GPS"
         : undefined
     )
   }
