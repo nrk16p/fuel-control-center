@@ -4,7 +4,8 @@ import type { EngineTripSummary } from "@/components/engineon/types"
 
 export function exportEngineOnExcel(
   rows: EngineTripSummary[],
-  filename = "engineon-summary.xlsx"
+  filename = "engineon-summary.xlsx",
+  gpsOf?: (r: EngineTripSummary) => string
 ) {
   if (!rows || rows.length === 0) return
 
@@ -12,6 +13,7 @@ export function exportEngineOnExcel(
   const data = rows.map((r) => ({
     วันที่: r.Date,
     ทะเบียน: r.TruckPlateNo,
+    ...(gpsOf ? { GPS: gpsOf(r) } : {}),
     คนขับ: r.Supervisor ?? "",
     "Engine-On (นาที)": r.TotalMinutes,
     "Engine-On (แสดงผล)": r.Duration_str,

@@ -4,6 +4,7 @@ import React from "react"
 import { Search, RotateCcw } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { PROVIDERS } from "@/lib/gps-provider"
 
 /* -----------------------------
    Thai Month / Year helpers
@@ -45,6 +46,9 @@ interface Props {
   year: AllOrNumber
   setYear: (v: AllOrNumber) => void
 
+  gps: string
+  setGps: (v: string) => void
+
   versionOptions: string[]
   yearOptions: number[] // ค.ศ.
   onReset: () => void
@@ -62,6 +66,8 @@ export function EngineOnFilters({
   setMonth,
   year,
   setYear,
+  gps,
+  setGps,
   versionOptions,
   yearOptions,
   onReset,
@@ -97,6 +103,17 @@ export function EngineOnFilters({
             {v}
           </option>
         ))}
+      </FilterSelect>
+
+      {/* GPS provider */}
+      <FilterSelect<string> label="GPS" value={gps} onChange={setGps}>
+        <option value="all">ทุกเจ้า</option>
+        {PROVIDERS.map((p) => (
+          <option key={p.key} value={p.key}>
+            {p.label}
+          </option>
+        ))}
+        <option value="none">ไม่มี GPS</option>
       </FilterSelect>
 
       {/* Month */}

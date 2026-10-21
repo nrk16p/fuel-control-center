@@ -5,6 +5,7 @@ import { EngineOnTable } from "@/components/engineon/EngineOnTable"
 import { EngineOnFilters } from "@/components/engineon/EngineOnFilters"
 import type { EngineTripSummary, SortKey } from "@/components/engineon/types"
 import { exportEngineOnExcel } from "@/lib/exportEngineOnExcel"
+import { dayKey, rangeFor, rowProviders, type ProviderPayload } from "@/lib/gps-provider"
 
 /* -------------------------------------------------
    🔹 Current month / year (DEFAULT)
@@ -24,6 +25,7 @@ export default function EngineOnPage() {
   const [version, setVersion] = useState<string | "all">("all")
   const [month, setMonth] = useState<number | "all">(currentMonth)
   const [year, setYear] = useState<number | "all">(currentYear)
+  const [gps, setGps] = useState<string>("all")
 
   /* -------------------------------------------------
      ↕ Sorting
@@ -49,6 +51,28 @@ export default function EngineOnPage() {
       })
       .catch(() => setLoading(false))
   }, [])
+
+  /* -------------------------------------------------
+     📡 GPS provider per truck/day (selected month, or the whole year)
+  ------------------------------------------------- */
+  const gpsRange = useMemo(() => rangeFor(year === "all" ? currentYear : year, month), [year, month])
+  const gpsKey = `${gpsRange.from}_${gpsRange.to}`
+  const [gpsState, setGpsState] = useState<{ key: string; data: ProviderPayload | null } | null>(null)
+  const gpsLoading = gpsState?.key !== gpsKey
+  const gpsData = gpsLoading ? null : gpsState?.data ?? null
+
+  useEffect(() => {
+    let alive = true
+    fetch(`/api/engineon/gps-provider?from=${gpsRange.from}&to=${gpsRange.to}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((d: ProviderPayload | null) => {
+        if (alive) setGpsState({ key: gpsKey, data: d })
+      })
+    return () => {
+      alive = false
+    }
+  }, [gpsRange, gpsKey])
 
   /* -------------------------------------------------
      Options
@@ -94,13 +118,20 @@ export default function EngineOnPage() {
       temp = temp.filter((d) => d.year === year)
     }
 
+    if (gps !== "all" && gpsData) {
+      temp = temp.filter((d) => {
+        const list = rowProviders(gpsData, d.TruckPlateNo, dayKey(d.Date), d.version_type)
+        return gps === "none" ? list.length === 0 : list.some((p) => p.key === gps)
+      })
+    }
+
     return temp
-  }, [data, search, version, month, year])
+  }, [data, search, version, month, year, gps, gpsData])
 
   // กลับหน้า 1 ทุกครั้งที่เปลี่ยน filter — กันค้างอยู่หน้าที่ไม่มีข้อมูล
   useEffect(() => {
     setPage(1)
-  }, [search, version, month, year])
+  }, [search, version, month, year, gps])
 
   /* -------------------------------------------------
      Sorting
@@ -151,6 +182,7 @@ export default function EngineOnPage() {
     setVersion("all")
     setMonth(currentMonth)
     setYear(currentYear)
+    setGps("all")
     setPage(1)
   }
 
@@ -162,7 +194,10 @@ export default function EngineOnPage() {
       sorted,
       `engineon_${year !== "all" ? year : "all"}_${
         month !== "all" ? month : "all"
-      }.xlsx`
+      }.xlsx`,
+      gpsData
+        ? (r) => rowProviders(gpsData, r.TruckPlateNo, dayKey(r.Date), r.version_type).map((p) => p.label).join(" + ") || "ไม่มี GPS"
+        : undefined
     )
   }
 
@@ -196,6 +231,8 @@ export default function EngineOnPage() {
         setMonth={setMonth}
         year={year}
         setYear={setYear}
+        gps={gps}
+        setGps={setGps}
         versionOptions={versionOptions}
         yearOptions={yearOptions}
         onReset={resetFilters}
@@ -207,6 +244,8 @@ export default function EngineOnPage() {
       ) : (
         <EngineOnTable
           data={paginated}
+          gps={gpsData}
+          gpsLoading={gpsLoading}
           sortKey={sortKey}
           sortDir={sortDir}
           onSort={toggleSort}
