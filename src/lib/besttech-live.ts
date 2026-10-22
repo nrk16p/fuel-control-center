@@ -18,6 +18,13 @@ export class RateLimited extends Error {
   }
 }
 
+/** A failure whose `code` is safe to show (never the key or the URL). */
+export class BesttechFailure extends Error {
+  constructor(public code: string) {
+    super(code)
+  }
+}
+
 let trackCache: { at: number; vehicles: string[] } | null = null
 let plantsCache: { at: number; plants: Plant[] } | null = null
 
@@ -35,8 +42,8 @@ async function spend(cost: number): Promise<void> {
 }
 
 async function post(path: string, body: object): Promise<Record<string, unknown>> {
-  const key = process.env.BESTTECH_API
-  if (!key) throw new Error("BESTTECH_API is not set")
+  const key = (process.env.BESTTECH_API ?? "").trim().replace(/^["']|["']$/g, "")   // pasted values often carry a newline or quotes
+  if (!key) throw new BesttechFailure("missing_key")
   // Content-Type must be exactly application/json (a charset suffix gets HTTP 415)
   const res = await fetch(`${BASE_URL}/${path}`, {
     method: "POST",
@@ -44,11 +51,11 @@ async function post(path: string, body: object): Promise<Record<string, unknown>
     body: JSON.stringify(body),
     cache: "no-store",
   })
-  if (!res.ok) throw new Error(`Besttech ${path} HTTP ${res.status}`)
+  if (!res.ok) throw new BesttechFailure(`${path}_http_${res.status}`)
   const payload = (await res.json()) as Record<string, unknown>
   if (payload.what === "error") {
     if (payload.error_code === "error.TooManyRequests") throw new RateLimited(45, "besttech")
-    throw new Error(`Besttech ${path}: ${String(payload.error_code ?? payload.msg ?? "error")}`)
+    throw new BesttechFailure(`${path}_${String(payload.error_code ?? "error")}`)
   }
   return payload
 }

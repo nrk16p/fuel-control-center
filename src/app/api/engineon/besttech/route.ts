@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { buildEvents, parseDetailId } from "@/lib/besttech-engineon"
-import { RATE_LIMIT_PER_MIN, RateLimited, besttechDayPoints, loadPlants } from "@/lib/besttech-live"
+import { BesttechFailure, RATE_LIMIT_PER_MIN, RateLimited, besttechDayPoints, loadPlants } from "@/lib/besttech-live"
 
 // Engine-on events of one Besttech truck/day, computed live from Besttech /history.
 // ?id=70-6291_2026-10-21 · nothing is stored · shared limit of RATE_LIMIT_PER_MIN Besttech calls/min.
@@ -27,6 +27,7 @@ export async function GET(req: Request) {
       )
     }
     console.error("besttech engine-on detail failed:", error)
-    return NextResponse.json({ error: "besttech_failed" }, { status: 502 })
+    const reason = error instanceof BesttechFailure ? error.code : "network_or_db"
+    return NextResponse.json({ error: "besttech_failed", reason }, { status: 502 })
   }
 }
