@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import EngineonDetailClient from "@/components/engineon/EngineonDetailClient";
+import BesttechLiveDetail from "@/components/engineon/BesttechLiveDetail";
+import clientPromise from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,6 +36,9 @@ export default async function EngineonDetailPage(props: {
   console.log("🟢 [EngineonDetailPage] param:", id);
 
   if (!id) return notFound();
+
+  // Besttech trucks keep no event rows — the page computes them live from the Besttech API
+  if (await isBesttechDay(id)) return <BesttechLiveDetail id={id} />;
 
   // ✅ Always use absolute URL for SSR (avoids localhost problem)
   const apiUrl = `${PROD_DOMAIN}/api/raw-engineon?id=${encodeURIComponent(id)}`;
@@ -81,5 +86,18 @@ export default async function EngineonDetailPage(props: {
         ❌ Failed to load data for {id}
       </div>
     );
+  }
+}
+
+async function isBesttechDay(id: string): Promise<boolean> {
+  try {
+    const doc = await (await clientPromise)
+      .db("analytics")
+      .collection<{ _id: string; version_type?: string }>("summary_engineon")
+      .findOne({ _id: id.replace(/_d\d+$/, "") }, { projection: { version_type: 1 } });
+    return doc?.version_type === "besttech";
+  } catch (err) {
+    console.error("summary lookup failed:", err);
+    return false;
   }
 }

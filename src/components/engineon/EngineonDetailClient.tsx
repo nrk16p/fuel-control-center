@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, type ReactNode } from "react"
 import EngineonMapClient from "@/components/engineon/EngineonMapClient"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -58,8 +58,12 @@ function engineOnColor(min: number): string {
 ------------------------------------------------- */
 export default function EngineonDetailClient({
   events,
+  sourceLabel = "v2",
+  notice,
 }: {
   events: RawEngineonData[]
+  sourceLabel?: string
+  notice?: ReactNode
 }) {
   /* ───── Guard: no data ───── */
   if (!events || events.length === 0) {
@@ -115,7 +119,7 @@ export default function EngineonDetailClient({
         {/* Header */}
         <header className="sticky top-0 bg-white pb-2 border-b z-10">
           <h1 className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-2">
-            Engine-On Details <Badge variant="secondary">v2</Badge>
+            Engine-On Details <Badge variant="secondary">{sourceLabel}</Badge>
           </h1>
 
           <p className="text-sm text-gray-600">
@@ -140,6 +144,7 @@ export default function EngineonDetailClient({
               🟢 {summary.green}
             </Badge>
           </div>
+          {notice}
         </header>
 
         {/* Filter */}
